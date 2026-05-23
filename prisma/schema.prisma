@@ -1,0 +1,192 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==================== ENUMS ====================
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum OrderStatus {
+  BOOKED
+  PICKUP
+  WASHING
+  DRYING
+  DELIVERY
+  DONE
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PickupType {
+  PICKUP
+  DELIVERY
+  BOTH
+}
+
+// ==================== MODELS ====================
+
+model User {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(100)
+  email     String   @unique @db.VarChar(150)
+  phone     String?  @db.VarChar(20)
+  password  String
+  role      Role     @default(USER)
+  address   String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders        Order[]
+  loyaltyPoints LoyaltyPoint[]
+  reviews       Review[]
+
+  @@map("users")
+}
+
+model ShoeType {
+  id          String  @id @default(uuid())
+  name        String  @db.VarChar(100) // "Sneakers", "Boots", "Heels"
+  basePrice   Int // dalam rupiah, misal 25000
+  description String? @db.Text
+  isActive    Boolean @default(true)
+
+  orders Order[]
+
+  @@map("shoe_types")
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  orderNumber     String      @unique @db.VarChar(20) // ORD-20260521-001
+  userId          String
+  shoeTypeId      String
+  quantity        Int         @default(1)
+  surcharge       Int         @default(0) // biaya tambahan (express, dll)
+  totalPrice      Int // basePrice × qty + surcharge
+  status          OrderStatus @default(BOOKED)
+  notes           String?     @db.Text
+  pickupAddress   String?     @db.Text
+  deliveryAddress String?     @db.Text
+  scheduledAt     DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id])
+  shoeType       ShoeType        @relation(fields: [shoeTypeId], references: [id])
+  payment        Payment?
+  tracking       OrderTracking[]
+  shoePhotos     ShoePhoto[]
+  review         Review?
+  pickupSchedule PickupSchedule?
+  loyaltyPoint   LoyaltyPoint?
+
+  @@map("orders")
+}
+
+model OrderTracking {
+  id        String      @id @default(uuid())
+  orderId   String
+  status    OrderStatus
+  note      String?     @db.VarChar(255)
+  updatedBy String?     @db.VarChar(100) // nama admin
+  createdAt DateTime    @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("order_tracking")
+}
+
+model Payment {
+  id               String        @id @default(uuid())
+  orderId          String        @unique
+  snapToken        String?       @db.Text // dari Midtrans
+  transactionId    String?       @db.VarChar(100)
+  paymentMethod    String?       @db.VarChar(50) // "gopay", "bca_va", dll
+  amount           Int
+  status           PaymentStatus @default(PENDING)
+  paidAt           DateTime?
+  midtransResponse Json? // raw webhook response
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
+}
+
+model LoyaltyPoint {
+  id          String   @id @default(uuid())
+  userId      String
+  orderId     String?  @unique
+  points      Int // +/- points
+  description String?  @db.VarChar(255) // "Order #ORD-xxx", "Redeem"
+  createdAt   DateTime @default(now())
+
+  user  User   @relation(fields: [userId], references: [id])
+  order Order? @relation(fields: [orderId], references: [id])
+
+  @@map("loyalty_points")
+}
+
+model ShoePhoto {
+  id         String   @id @default(uuid())
+  orderId    String
+  photoUrl   String   @db.Text // URL dari Cloudinary
+  type       String   @db.VarChar(10) // "before" | "after"
+  uploadedAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("shoe_photos")
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  orderId   String   @unique
+  userId    String
+  rating    Int // 1-5
+  comment   String?  @db.Text
+  isVisible Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@map("reviews")
+}
+
+model PickupSchedule {
+  id           String     @id @default(uuid())
+  orderId      String     @unique
+  type         PickupType
+  pickupTime   DateTime?
+  deliveryTime DateTime?
+  courierName  String?    @db.VarChar(100)
+  courierPhone String?    @db.VarChar(20)
+  notes        String?    @db.Text
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("pickup_schedule")
+}
