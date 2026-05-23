@@ -1,6 +1,6 @@
 // app/admin/page.tsx
 import { redirect } from 'next/navigation'
-import prisma from '@/lib/prisma'
+import { prisma } from '@/lib/prisma'
 import { getUserFromCookies } from '@/lib/auth-server'
 import AdminOrderTable from '@/components/admin/AdminOrderTable'
 

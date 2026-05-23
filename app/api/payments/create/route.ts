@@ -1,6 +1,5 @@
-// app/api/payment/create/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
+import { prisma } from '@/lib/prisma'
 import { getUserFromRequest } from '@/lib/auth-server'
 import midtransClient from 'midtrans-client'
 
@@ -50,15 +49,20 @@ export async function POST(req: NextRequest) {
 
   const transaction = await snap.createTransaction(parameter)
 
-  // Upsert payment record
+  // Upsert payment record + simpan transactionId
   await prisma.payment.upsert({
     where: { orderId: order.id },
-    update: { snapToken: transaction.token, status: 'PENDING' },
+    update: {
+      snapToken: transaction.token,
+      status: 'PENDING',
+      transactionId: order.id, // ✅ fix
+    },
     create: {
       orderId: order.id,
       snapToken: transaction.token,
       amount: order.totalPrice,
       status: 'PENDING',
+      transactionId: order.id, // ✅ fix
     },
   })
 

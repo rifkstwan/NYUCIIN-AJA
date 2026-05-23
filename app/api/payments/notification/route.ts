@@ -1,13 +1,18 @@
-// app/api/payment/notification/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import prisma from '@/lib/prisma'
+import { prisma } from '@/lib/prisma'
 import crypto from 'crypto'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
 
-  // Verifikasi signature Midtrans
+  // Midtrans test ping - tidak ada order_id real
+  if (!body.order_id || !body.signature_key) {
+    return NextResponse.json({ ok: true })
+  }
+
   const { order_id, status_code, gross_amount, signature_key, transaction_status, fraud_status } = body
+
+  // Verifikasi signature Midtrans
   const serverKey = process.env.MIDTRANS_SERVER_KEY!
   const expectedSignature = crypto
     .createHash('sha512')
@@ -24,16 +29,42 @@ export async function POST(req: NextRequest) {
   else if (transaction_status === 'settlement') paymentStatus = 'PAID'
   else if (['cancel', 'deny', 'expire'].includes(transaction_status)) paymentStatus = 'FAILED'
 
+  // Cari payment by transactionId (bukan orderId!)
+  const payment = await prisma.payment.findFirst({
+    where: { transactionId: order_id },
+    include: { order: true },
+  })
+
+  if (!payment) {
+    return NextResponse.json({ error: 'Payment tidak ditemukan' }, { status: 404 })
+  }
+
+  // Update payment
   await prisma.payment.update({
-    where: { orderId: order_id },
+    where: { id: payment.id },
     data: {
       status: paymentStatus,
-      transactionId: body.transaction_id,
       paymentMethod: body.payment_type,
       paidAt: paymentStatus === 'PAID' ? new Date() : null,
       midtransResponse: body,
     },
   })
+
+  // Jika PAID → update order jadi PICKUP + tambah tracking
+  if (paymentStatus === 'PAID' && payment.order.status === 'BOOKED') {
+    await prisma.order.update({
+      where: { id: payment.orderId },
+      data: { status: 'PICKUP' },
+    })
+
+    await prisma.orderTracking.create({
+      data: {
+        orderId: payment.orderId,
+        status: 'PICKUP',
+        note: 'Pembayaran berhasil, pesanan menunggu pickup',
+      },
+    })
+  }
 
   return NextResponse.json({ ok: true })
 }

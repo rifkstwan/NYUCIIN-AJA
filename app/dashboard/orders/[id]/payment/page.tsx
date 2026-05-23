@@ -16,7 +16,7 @@ export default function PaymentPage() {
   useEffect(() => {
     // Load Midtrans Snap script
     const script = document.createElement('script')
-    script.src = 'https://app.midtrans.com/snap/snap.js'
+    script.src = 'https://app.sandbox.midtrans.com/snap/snap.js'
     // Untuk sandbox: 'https://app.sandbox.midtrans.com/snap/snap.js'
     script.setAttribute('data-client-key', process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY!)
     document.head.appendChild(script)
@@ -29,7 +29,7 @@ export default function PaymentPage() {
   async function handlePay() {
     setLoading(true)
     try {
-      const res = await fetch(`/api/payment/create`, {
+      const res = await fetch(`/api/payments/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId: id }),
