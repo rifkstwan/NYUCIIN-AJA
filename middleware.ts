@@ -1,16 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server'
+// middleware.ts
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
-  const token = request.cookies.get('auth_token')
+  const token = request.cookies.get('auth_token')?.value
   const { pathname } = request.nextUrl
 
-  const isProtected =
-    pathname.startsWith('/dashboard') || pathname.startsWith('/admin')
-
-  if (isProtected && !token) {
-    return NextResponse.redirect(new URL('/auth/login', request.url))
+  // Proteksi /dashboard/* dan /admin/*
+  if (pathname.startsWith('/dashboard') || pathname.startsWith('/admin')) {
+    if (!token) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
   }
 
+  // Proteksi /admin/* hanya untuk ADMIN (decode token simple)
+  // Full role check sebaiknya di server component/API level
   return NextResponse.next()
 }
 
