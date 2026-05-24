@@ -3,18 +3,18 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getToken } from "@/lib/auth-client";
-import { ArrowLeft, Package, MapPin, Clock } from "lucide-react";
+import { ArrowLeft, Package, MapPin, Clock, CheckCircle, XCircle } from "lucide-react";
 
-const statusSteps = ["BOOKED", "CONFIRMED", "PICKUP", "PROCESSING", "DELIVERY", "COMPLETED"];
+const statusSteps = ["BOOKED", "PICKUP", "PROCESSING", "DELIVERY", "DONE"];
 
-const statusConfig: Record<string, { label: string; emoji: string }> = {
-  BOOKED:     { label: "Order Diterima",   emoji: "📋" },
-  CONFIRMED:  { label: "Dikonfirmasi",     emoji: "✅" },
-  PICKUP:     { label: "Sedang Dijemput",  emoji: "🚗" },
-  PROCESSING: { label: "Sedang Diproses",  emoji: "🧼" },
-  DELIVERY:   { label: "Sedang Dikirim",   emoji: "🚚" },
-  COMPLETED:  { label: "Selesai",          emoji: "🎉" },
-  CANCELLED:  { label: "Dibatalkan",       emoji: "❌" },
+const statusConfig: Record<string, { label: string }> = {
+  BOOKED:     { label: "Order Diterima"   },
+  CONFIRMED:  { label: "Dikonfirmasi"     },
+  PICKUP:     { label: "Sedang Dijemput"  },
+  PROCESSING: { label: "Sedang Diproses"  },
+  DELIVERY:   { label: "Sedang Dikirim"   },
+  DONE:       { label: "Selesai"          },
+  CANCELLED:  { label: "Dibatalkan"       },
 };
 
 export default function OrderDetailPage() {
@@ -54,7 +54,7 @@ export default function OrderDetailPage() {
   );
 
   const currentStep = statusSteps.indexOf(order.status);
-  const s = statusConfig[order.status] ?? { label: order.status, emoji: "📦" };
+  const s = statusConfig[order.status] ?? { label: order.status };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -67,7 +67,6 @@ export default function OrderDetailPage() {
 
         {/* Status Card */}
         <div className="bg-gradient-to-br from-primary-900 to-primary-600 text-white rounded-2xl p-6 mb-6 text-center">
-          <div className="text-5xl mb-3">{s.emoji}</div>
           <div className="text-xl font-bold mb-1">{s.label}</div>
           <div className="text-blue-200 text-sm">{order.orderNumber}</div>
         </div>
@@ -86,7 +85,7 @@ export default function OrderDetailPage() {
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition ${
                       done ? "bg-primary-600 text-white" : "bg-gray-100 text-gray-400"
                     } ${active ? "ring-4 ring-primary-100" : ""}`}>
-                      {done ? "✓" : i + 1}
+                      {done ? <CheckCircle className="w-4 h-4" /> : i + 1}
                     </div>
                     <span className={`text-sm ${
                       active ? "font-bold text-primary-900" :
@@ -106,6 +105,42 @@ export default function OrderDetailPage() {
           </div>
         )}
 
+        {/* Riwayat Tracking */}
+        {order.tracking && order.tracking.length > 0 && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+            <h3 className="font-bold text-primary-900 mb-4">Riwayat Status</h3>
+            <div className="space-y-4">
+              {[...order.tracking].reverse().map((track: any) => {
+                const cfg = statusConfig[track.status] ?? { label: track.status }
+                return (
+                  <div key={track.id} className="flex items-start gap-3">
+                    <div className="w-2 h-2 rounded-full bg-primary-400 mt-1.5 shrink-0" />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-primary-900">
+                          {cfg.label}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          {new Date(track.createdAt).toLocaleString("id-ID", {
+                            day: "numeric", month: "short", year: "numeric",
+                            hour: "2-digit", minute: "2-digit"
+                          })}
+                        </span>
+                      </div>
+                      {track.note && (
+                        <p className="text-xs text-gray-500 mt-0.5">{track.note}</p>
+                      )}
+                      {track.updatedBy && (
+                        <p className="text-xs text-gray-400 mt-0.5">oleh {track.updatedBy}</p>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Order Detail */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
           <h3 className="font-bold text-primary-900 mb-4">Detail Order</h3>
@@ -113,7 +148,7 @@ export default function OrderDetailPage() {
             {order.shoeType ? (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">
-                  {order.shoeType.name} × {order.quantity} pasang
+                  {order.shoeType.name} x {order.quantity} pasang
                 </span>
                 <span className="font-medium">
                   Rp {(order.shoeType.basePrice * order.quantity).toLocaleString("id-ID")}
@@ -121,7 +156,7 @@ export default function OrderDetailPage() {
               </div>
             ) : order.items?.map((item: any, i: number) => (
               <div key={i} className="flex justify-between text-sm">
-                <span className="text-gray-600">{item.serviceName} × {item.quantity}</span>
+                <span className="text-gray-600">{item.serviceName} x {item.quantity}</span>
                 <span className="font-medium">
                   Rp {(item.price * item.quantity).toLocaleString("id-ID")}
                 </span>
@@ -172,7 +207,13 @@ export default function OrderDetailPage() {
               ? "bg-green-50 text-green-700 border border-green-200"
               : "bg-yellow-50 text-yellow-700 border border-yellow-200"
           }`}>
-            {order.payment.status === "PAID" ? "✅ Pembayaran Lunas" : "⏳ Menunggu Pembayaran"}
+            <div className="flex items-center justify-center gap-2">
+              {order.payment.status === "PAID"
+                ? <CheckCircle className="w-4 h-4" />
+                : <Clock className="w-4 h-4" />
+              }
+              {order.payment.status === "PAID" ? "Pembayaran Lunas" : "Menunggu Pembayaran"}
+            </div>
             <div className="text-xs font-normal mt-1 opacity-75">
               via {order.payment.paymentMethod} • Rp {order.payment.amount.toLocaleString("id-ID")}
             </div>
@@ -183,7 +224,7 @@ export default function OrderDetailPage() {
               href={`/dashboard/orders/${order.id}/payment`}
               className="w-full flex items-center justify-center gap-2 bg-primary-600 text-white px-6 py-3.5 rounded-xl font-semibold hover:bg-primary-700 transition shadow-sm"
             >
-              💳 Bayar Sekarang
+              Bayar Sekarang
             </Link>
             <p className="text-center text-xs text-gray-400 mt-2">
               Selesaikan pembayaran untuk memproses order kamu
