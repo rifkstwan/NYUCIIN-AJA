@@ -3,18 +3,18 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getToken } from "@/lib/auth-client";
-import { ArrowLeft, Package, MapPin, Clock, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeft, Package, MapPin, Clock, CheckCircle, Star } from "lucide-react";
 
 const statusSteps = ["BOOKED", "PICKUP", "PROCESSING", "DELIVERY", "DONE"];
 
 const statusConfig: Record<string, { label: string }> = {
-  BOOKED:     { label: "Order Diterima"   },
-  CONFIRMED:  { label: "Dikonfirmasi"     },
-  PICKUP:     { label: "Sedang Dijemput"  },
-  PROCESSING: { label: "Sedang Diproses"  },
-  DELIVERY:   { label: "Sedang Dikirim"   },
-  DONE:       { label: "Selesai"          },
-  CANCELLED:  { label: "Dibatalkan"       },
+  BOOKED:     { label: "Order Diterima"  },
+  CONFIRMED:  { label: "Dikonfirmasi"    },
+  PICKUP:     { label: "Sedang Dijemput" },
+  PROCESSING: { label: "Sedang Diproses" },
+  DELIVERY:   { label: "Sedang Dikirim"  },
+  DONE:       { label: "Selesai"         },
+  CANCELLED:  { label: "Dibatalkan"      },
 };
 
 export default function OrderDetailPage() {
@@ -22,11 +22,13 @@ export default function OrderDetailPage() {
   const router = useRouter();
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [photos, setPhotos] = useState<any[]>([]);
 
   useEffect(() => {
     const token = getToken();
     if (!token) { router.push("/auth/login"); return; }
     fetchOrder(token);
+    fetchPhotos(token);
   }, []);
 
   const fetchOrder = async (token: string) => {
@@ -38,6 +40,20 @@ export default function OrderDetailPage() {
       setOrder(data.order ?? data);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPhotos = async (token: string) => {
+    try {
+      const res = await fetch(`/api/orders/${id}/photos`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPhotos(Array.isArray(data) ? data : []);
+      }
+    } catch {
+      // foto tidak wajib ada
     }
   };
 
@@ -55,6 +71,8 @@ export default function OrderDetailPage() {
 
   const currentStep = statusSteps.indexOf(order.status);
   const s = statusConfig[order.status] ?? { label: order.status };
+  const beforePhotos = photos.filter(p => p.type === "before");
+  const afterPhotos = photos.filter(p => p.type === "after");
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -111,7 +129,7 @@ export default function OrderDetailPage() {
             <h3 className="font-bold text-primary-900 mb-4">Riwayat Status</h3>
             <div className="space-y-4">
               {[...order.tracking].reverse().map((track: any) => {
-                const cfg = statusConfig[track.status] ?? { label: track.status }
+                const cfg = statusConfig[track.status] ?? { label: track.status };
                 return (
                   <div key={track.id} className="flex items-start gap-3">
                     <div className="w-2 h-2 rounded-full bg-primary-400 mt-1.5 shrink-0" />
@@ -123,7 +141,7 @@ export default function OrderDetailPage() {
                         <span className="text-xs text-gray-400">
                           {new Date(track.createdAt).toLocaleString("id-ID", {
                             day: "numeric", month: "short", year: "numeric",
-                            hour: "2-digit", minute: "2-digit"
+                            hour: "2-digit", minute: "2-digit",
                           })}
                         </span>
                       </div>
@@ -135,7 +153,7 @@ export default function OrderDetailPage() {
                       )}
                     </div>
                   </div>
-                )
+                );
               })}
             </div>
           </div>
@@ -188,7 +206,7 @@ export default function OrderDetailPage() {
             <div className="flex items-center gap-3 text-gray-600">
               <Clock className="w-4 h-4 text-primary-500" />
               <span>Dibuat: {new Date(order.createdAt).toLocaleDateString("id-ID", {
-                weekday: "long", day: "numeric", month: "long", year: "numeric"
+                weekday: "long", day: "numeric", month: "long", year: "numeric",
               })}</span>
             </div>
             {order.notes && (
@@ -200,9 +218,50 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
+        {/* Foto Sepatu Before / After */}
+        {photos.length > 0 && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+            <h3 className="font-bold text-primary-900 mb-4">Foto Sepatu</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-2">Sebelum</p>
+                <div className="space-y-2">
+                  {beforePhotos.length > 0
+                    ? beforePhotos.map(p => (
+                        <img
+                          key={p.id}
+                          src={p.photoUrl}
+                          alt="before"
+                          className="w-full rounded-xl object-cover aspect-square border border-gray-100"
+                        />
+                      ))
+                    : <div className="aspect-square rounded-xl bg-gray-50 border border-dashed border-gray-200 flex items-center justify-center text-xs text-gray-400">Belum ada foto</div>
+                  }
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-2">Sesudah</p>
+                <div className="space-y-2">
+                  {afterPhotos.length > 0
+                    ? afterPhotos.map(p => (
+                        <img
+                          key={p.id}
+                          src={p.photoUrl}
+                          alt="after"
+                          className="w-full rounded-xl object-cover aspect-square border border-gray-100"
+                        />
+                      ))
+                    : <div className="aspect-square rounded-xl bg-gray-50 border border-dashed border-gray-200 flex items-center justify-center text-xs text-gray-400">Belum ada foto</div>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Status Pembayaran / Tombol Bayar */}
         {order.payment ? (
-          <div className={`p-4 rounded-xl text-center text-sm font-medium ${
+          <div className={`p-4 rounded-xl text-center text-sm font-medium mb-6 ${
             order.payment.status === "PAID"
               ? "bg-green-50 text-green-700 border border-green-200"
               : "bg-yellow-50 text-yellow-700 border border-yellow-200"
@@ -214,12 +273,14 @@ export default function OrderDetailPage() {
               }
               {order.payment.status === "PAID" ? "Pembayaran Lunas" : "Menunggu Pembayaran"}
             </div>
-            <div className="text-xs font-normal mt-1 opacity-75">
-              via {order.payment.paymentMethod} • Rp {order.payment.amount.toLocaleString("id-ID")}
-            </div>
+            {order.payment.paymentMethod && (
+              <div className="text-xs font-normal mt-1 opacity-75">
+                via {order.payment.paymentMethod} • Rp {order.payment.amount?.toLocaleString("id-ID")}
+              </div>
+            )}
           </div>
         ) : order.status === "BOOKED" ? (
-          <div>
+          <div className="mb-6">
             <Link
               href={`/dashboard/orders/${order.id}/payment`}
               className="w-full flex items-center justify-center gap-2 bg-primary-600 text-white px-6 py-3.5 rounded-xl font-semibold hover:bg-primary-700 transition shadow-sm"
@@ -231,6 +292,39 @@ export default function OrderDetailPage() {
             </p>
           </div>
         ) : null}
+
+        {/* Tombol Review — hanya jika order DONE dan belum ada review */}
+        {order.status === "DONE" && !order.review && (
+          <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-center">
+            <p className="text-sm text-blue-700 font-medium mb-3">
+              Bagaimana pengalaman kamu? Berikan review!
+            </p>
+            <Link
+              href={`/dashboard/orders/${id}/review`}
+              className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-blue-700 transition"
+            >
+              <Star className="w-4 h-4" /> Beri Review
+            </Link>
+          </div>
+        )}
+
+        {/* Tampilkan review yang sudah ada */}
+        {order.review && (
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h3 className="font-bold text-primary-900 mb-3">Review Kamu</h3>
+            <div className="flex gap-1 mb-2">
+              {[1,2,3,4,5].map(s => (
+                <Star
+                  key={s}
+                  className={`w-5 h-5 ${s <= order.review.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-200"}`}
+                />
+              ))}
+            </div>
+            {order.review.comment && (
+              <p className="text-sm text-gray-600 italic">"{order.review.comment}"</p>
+            )}
+          </div>
+        )}
 
       </div>
     </div>

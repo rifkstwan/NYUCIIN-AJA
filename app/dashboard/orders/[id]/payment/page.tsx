@@ -1,7 +1,7 @@
-// app/dashboard/orders/[id]/payment/page.tsx
 'use client'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { getToken } from '@/lib/auth-client'
 
 declare global {
   interface Window { snap: { pay: (token: string, options: object) => void } }
@@ -16,6 +16,9 @@ export default function PaymentPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    const token = getToken()
+    if (!token) { router.push('/auth/login'); return }
+
     // Cek jika script sudah ada (avoid duplicate load)
     const existing = document.querySelector('script[src*="snap.js"]')
     if (existing) {
@@ -29,7 +32,9 @@ export default function PaymentPage() {
       document.head.appendChild(script)
     }
 
-    fetch(`/api/orders/${id}`)
+    fetch(`/api/orders/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },  // ✅ fix
+    })
       .then(r => {
         if (!r.ok) throw new Error('Order tidak ditemukan')
         return r.json()
@@ -46,9 +51,13 @@ export default function PaymentPage() {
     setLoading(true)
     setError(null)
     try {
+      const token = getToken()
       const res = await fetch(`/api/payments/create`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,  // ✅ fix
+        },
         body: JSON.stringify({ orderId: id }),
       })
 

@@ -9,14 +9,33 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
   }
 
-  const orders = await prisma.order.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      user: { select: { name: true, phone: true } },
-      shoeType: { select: { name: true } },
-      payment: { select: { status: true } },
-    },
-  });
+  const { searchParams } = new URL(req.url)
+  const status = searchParams.get('status')
+  const page = parseInt(searchParams.get('page') ?? '1')
+  const limit = 10
 
-  return NextResponse.json({ orders });
+  const where = status ? { status: status as any } : {}
+
+  const [orders, total] = await Promise.all([
+    prisma.order.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * limit,
+      take: limit,
+      include: {
+        user: { select: { name: true, phone: true, email: true } },
+        shoeType: { select: { name: true } },
+        payment: { select: { status: true } },
+        tracking: { orderBy: { createdAt: 'desc' }, take: 1 },
+      },
+    }),
+    prisma.order.count({ where }),
+  ])
+
+  return NextResponse.json({
+    orders,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
+  });
 }
