@@ -5,10 +5,12 @@ import Testimonials from "@/components/landing/Testimonials";
 import Contact from "@/components/landing/Contact";
 import Pricing from "@/components/landing/Pricing";
 import Footer from "@/components/landing/Footer";
+import Navbar from "@/components/landing/Navbar"; // ← tambah ini
 
 export default function Home() {
   return (
     <main className="min-h-screen" style={{ fontFamily: "var(--font-body)", background: "#f8fafc" }}>
+      <Navbar /> {/* ← tambah ini */}
       <div style={{
         background: "radial-gradient(ellipse 80% 60% at 60% -10%, #dcfce7 0%, transparent 60%), radial-gradient(ellipse 50% 40% at 100% 50%, #bbf7d0 0%, transparent 50%), #f8fafc"
       }}>

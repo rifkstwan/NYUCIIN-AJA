@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Navbar from "@/components/landing/Navbar";
 
 export const metadata: Metadata = {
-  title: "Nyuciin Aja — Laundry Sepatu Online",
+  title: "Nyuciin Aja - Laundry Sepatu Online",
   description:
     "Platform laundry sepatu online terpercaya di Semarang. Antar-jemput, tracking real-time, dan harga transparan.",
 };
@@ -20,7 +19,6 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
-        <Navbar />
         {children}
       </body>
     </html>

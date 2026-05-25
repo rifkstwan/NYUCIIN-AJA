@@ -46,7 +46,7 @@ export default function Contact() {
               WhatsApp
             </h3>
             <p style={{ fontSize: 13, color: "#475569", marginBottom: 10, lineHeight: 1.55 }}>
-              Chat langsung untuk konsultasi dan pemesanan
+              Chat langsung untuk konsultasi, pemesanan, atau pertanyaan lainnya
             </p>
             <p style={{ fontSize: 14, fontWeight: 700, color: "#16a34a" }}>
               0812-3456-7890

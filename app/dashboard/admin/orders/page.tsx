@@ -1,136 +1,110 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { getToken } from '@/lib/auth-client'
 
-const STATUS_LABELS: Record<string, string> = {
-  BOOKED: 'Dipesan', PICKUP: 'Pickup', WASHING: 'Dicuci',
-  DRYING: 'Pengeringan', DELIVERY: 'Pengiriman', DONE: 'Selesai', CANCELLED: 'Dibatalkan',
-}
-const STATUS_COLORS: Record<string, string> = {
-  BOOKED: 'bg-yellow-100 text-yellow-700',
-  PICKUP: 'bg-blue-100 text-blue-700',
-  WASHING: 'bg-cyan-100 text-cyan-700',
-  DRYING: 'bg-orange-100 text-orange-700',
-  DELIVERY: 'bg-purple-100 text-purple-700',
-  DONE: 'bg-green-100 text-green-700',
-  CANCELLED: 'bg-red-100 text-red-700',
+type Stats = {
+  totalOrders: number
+  activeOrders: number
+  completedOrders: number
+  cancelledOrders: number
+  totalUsers: number
+  totalRevenue: number
 }
 
-export default function AdminOrdersPage() {
-  const router = useRouter()
-  const [orders, setOrders] = useState<any[]>([])
-  const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [filterStatus, setFilterStatus] = useState('')
+type RevenuePoint = { month: string; revenue: number; orders: number }
+
+export default function AdminDashboardPage() {
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [revenue, setRevenue] = useState<RevenuePoint[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    setLoading(true)
-    const query = new URLSearchParams({ page: String(page) })
-    if (filterStatus) query.set('status', filterStatus)
+  const headers = { Authorization: `Bearer ${getToken()}` }
 
-    fetch(`/api/admin/orders?${query}`)
-      .then(r => r.json())
-      .then(data => {
-        setOrders(data.orders)
-        setTotal(data.total)
-        setTotalPages(data.totalPages)
-      })
-      .finally(() => setLoading(false))
-  }, [page, filterStatus])
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/admin/stats', { headers }).then((r) => r.json()),
+      fetch('/api/admin/revenue', { headers }).then((r) => r.json()),
+    ]).then(([s, r]) => {
+      setStats(s)
+      setRevenue(r.data ?? [])
+    }).finally(() => setLoading(false))
+  }, [])
+
+  const maxRevenue = Math.max(...revenue.map((r) => r.revenue), 1)
+
+  const cards = stats ? [
+    { label: 'Total Order', value: stats.totalOrders, color: '#3b82f6' },
+    { label: 'Order Aktif', value: stats.activeOrders, color: '#f59e0b' },
+    { label: 'Selesai', value: stats.completedOrders, color: '#16a34a' },
+    { label: 'Total Pelanggan', value: stats.totalUsers, color: '#8b5cf6' },
+  ] : []
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Kelola Order</h1>
+    <div>
+      <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>
+        Dashboard Admin
+      </h1>
+      <p style={{ color: '#64748b', fontSize: 14, marginBottom: 24 }}>
+        Ringkasan performa bisnis
+      </p>
 
-      {/* Filter */}
-      <div className="flex gap-2 mb-4 flex-wrap">
-        <button
-          onClick={() => { setFilterStatus(''); setPage(1) }}
-          className={`px-3 py-1 rounded-full text-sm font-medium border ${filterStatus === '' ? 'bg-gray-800 text-white' : 'bg-white text-gray-600'}`}
-        >
-          Semua ({total})
-        </button>
-        {Object.entries(STATUS_LABELS).map(([val, label]) => (
-          <button
-            key={val}
-            onClick={() => { setFilterStatus(val); setPage(1) }}
-            className={`px-3 py-1 rounded-full text-sm font-medium border ${filterStatus === val ? 'bg-gray-800 text-white' : 'bg-white text-gray-600'}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tabel */}
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-        </div>
+        <p style={{ color: '#94a3b8' }}>Memuat data...</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600">
-              <tr>
-                <th className="text-left px-4 py-3">No. Order</th>
-                <th className="text-left px-4 py-3">Customer</th>
-                <th className="text-left px-4 py-3">Layanan</th>
-                <th className="text-left px-4 py-3">Total</th>
-                <th className="text-left px-4 py-3">Payment</th>
-                <th className="text-left px-4 py-3">Status</th>
-                <th className="text-left px-4 py-3">Tanggal</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {orders.map(order => (
-                <tr key={order.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono font-medium">{order.orderNumber}</td>
-                  <td className="px-4 py-3">
-                    <p className="font-medium">{order.user.name}</p>
-                    <p className="text-gray-400 text-xs">{order.user.phone}</p>
-                  </td>
-                  <td className="px-4 py-3">{order.shoeType.name} ×{order.quantity}</td>
-                  <td className="px-4 py-3 font-medium">Rp {order.totalPrice.toLocaleString('id-ID')}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${order.payment?.status === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                      {order.payment?.status ?? 'BELUM'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[order.status]}`}>
-                      {STATUS_LABELS[order.status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">
-                    {new Date(order.createdAt).toLocaleDateString('id-ID')}
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => router.push(`/dashboard/admin/orders/${order.id}`)}
-                      className="text-blue-600 hover:underline text-xs font-medium"
-                    >
-                      Kelola →
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {orders.length === 0 && (
-            <p className="text-center text-gray-400 py-8">Tidak ada order.</p>
-          )}
-        </div>
-      )}
+        <>
+          {/* Stat Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
+            {cards.map((c) => (
+              <div key={c.label} style={{
+                background: '#fff', borderRadius: 12,
+                border: '1px solid #e2e8f0', padding: '20px 22px',
+              }}>
+                <p style={{ fontSize: 13, color: '#64748b', marginBottom: 8 }}>{c.label}</p>
+                <p style={{ fontSize: 28, fontWeight: 800, color: c.color }}>{c.value.toLocaleString('id-ID')}</p>
+              </div>
+            ))}
+          </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center gap-2 mt-4">
-          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1 border rounded disabled:opacity-40">←</button>
-          <span className="px-3 py-1 text-sm text-gray-600">Hal {page} / {totalPages}</span>
-          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-3 py-1 border rounded disabled:opacity-40">→</button>
-        </div>
+          {/* Revenue Card */}
+          <div style={{
+            background: '#fff', borderRadius: 12,
+            border: '1px solid #e2e8f0', padding: '20px 22px', marginBottom: 28,
+            display: 'flex', alignItems: 'center', gap: 16,
+          }}>
+            <div>
+              <p style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Total Revenue</p>
+              <p style={{ fontSize: 32, fontWeight: 800, color: '#16a34a' }}>
+                Rp {stats!.totalRevenue.toLocaleString('id-ID')}
+              </p>
+            </div>
+          </div>
+
+          {/* Revenue Chart */}
+          <div style={{
+            background: '#fff', borderRadius: 12,
+            border: '1px solid #e2e8f0', padding: '24px',
+          }}>
+            <p style={{ fontWeight: 600, fontSize: 15, color: '#0f172a', marginBottom: 20 }}>
+              Grafik Pendapatan (7 Bulan Terakhir)
+            </p>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: 160 }}>
+              {revenue.map((r) => (
+                <div key={r.month} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                  <p style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>
+                    {r.revenue > 0 ? `Rp ${(r.revenue / 1000).toFixed(0)}k` : ''}
+                  </p>
+                  <div style={{
+                    width: '100%', borderRadius: '6px 6px 0 0',
+                    background: r.revenue > 0 ? '#16a34a' : '#e2e8f0',
+                    height: `${Math.max((r.revenue / maxRevenue) * 120, r.revenue > 0 ? 8 : 4)}px`,
+                    transition: 'height 0.3s',
+                  }} />
+                  <p style={{ fontSize: 11, color: '#94a3b8', textAlign: 'center' }}>{r.month}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
       )}
     </div>
   )

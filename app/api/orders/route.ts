@@ -15,7 +15,6 @@ const createOrderSchema = z.object({
   scheduledAt: z.string().datetime().optional(),
 })
 
-// POST /api/orders — Buat order baru
 export async function POST(req: NextRequest) {
   const { error, user } = requireAuth(req)
   if (error) return error
@@ -33,22 +32,13 @@ export async function POST(req: NextRequest) {
 
     const { shoeTypeId, quantity, surcharge, notes, pickupAddress, deliveryAddress, scheduledAt } = parsed.data
 
-    // Ambil harga base dari shoe type
-    const shoeType = await prisma.shoeType.findUnique({
-      where: { id: shoeTypeId },
-    })
-
+    const shoeType = await prisma.shoeType.findUnique({ where: { id: shoeTypeId } })
     if (!shoeType || !shoeType.isActive) {
-      return NextResponse.json(
-        { message: 'Jenis sepatu tidak ditemukan' },
-        { status: 404 }
-      )
+      return NextResponse.json({ message: 'Jenis sepatu tidak ditemukan' }, { status: 404 })
     }
 
-    // Kalkulasi harga otomatis: base_price × qty + surcharge
     const totalPrice = shoeType.basePrice * quantity + surcharge
 
-    // Buat order + tracking awal sekaligus (transaction)
     const order = await prisma.$transaction(async (tx) => {
       const newOrder = await tx.order.create({
         data: {
@@ -67,13 +57,8 @@ export async function POST(req: NextRequest) {
         include: { shoeType: true },
       })
 
-      // Catat tracking awal
       await tx.orderTracking.create({
-        data: {
-          orderId: newOrder.id,
-          status: 'BOOKED',
-          note: 'Order berhasil dibuat',
-        },
+        data: { orderId: newOrder.id, status: 'BOOKED', note: 'Order berhasil dibuat' },
       })
 
       return newOrder
@@ -86,10 +71,11 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// GET /api/orders — List order milik user
 export async function GET(req: NextRequest) {
   const { error, user } = requireAuth(req)
   if (error) return error
+
+  const withTracking = new URL(req.url).searchParams.get('withTracking') === 'true'
 
   const orders = await prisma.order.findMany({
     where: { userId: user!.id },
@@ -97,9 +83,12 @@ export async function GET(req: NextRequest) {
       shoeType: true,
       payment: { select: { status: true, paymentMethod: true } },
       shoePhotos: true,
+      ...(withTracking && {
+        tracking: { orderBy: { createdAt: 'asc' } },
+      }),
     },
     orderBy: { createdAt: 'desc' },
   })
 
-  return NextResponse.json(orders)
+  return NextResponse.json({ orders })
 }
