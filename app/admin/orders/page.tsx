@@ -62,100 +62,132 @@ export default function AdminOrdersPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-primary-900 text-white sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <span className="font-bold">CuciSepatu<span className="text-primary-500">.id</span>
-            <span className="bg-yellow-400 text-primary-900 text-xs font-bold px-2 py-0.5 rounded-full ml-2">ADMIN</span>
-          </span>
-          <div className="flex gap-6">
-            <Link href="/admin/dashboard" className="text-sm text-blue-200 hover:text-white">Dashboard</Link>
-            <Link href="/admin/orders" className="text-sm text-white font-medium">Orders</Link>
-          </div>
-        </div>
-      </nav>
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>
+          Manajemen Order
+        </h1>
+        <p style={{ fontSize: 13, color: "#94a3b8" }}>{orders.length} total order</p>
+      </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-primary-900">Manajemen Order</h1>
-          <p className="text-gray-400 text-sm">{orders.length} total order</p>
+      {/* Filter Bar */}
+      <div style={{
+        background: "#fff", borderRadius: 16, padding: 16,
+        border: "1px solid #e2e8f0", marginBottom: 20,
+        display: "flex", gap: 12, flexWrap: "wrap",
+      }}>
+        <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
+          <Search style={{
+            width: 16, height: 16, color: "#94a3b8",
+            position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)",
+          }} />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cari order atau nama pelanggan..."
+            style={{
+              width: "100%", paddingLeft: 36, paddingRight: 12,
+              paddingTop: 10, paddingBottom: 10,
+              border: "1px solid #e2e8f0", borderRadius: 10,
+              fontSize: 13, outline: "none", boxSizing: "border-box",
+              fontFamily: "var(--font-body)",
+            }}
+          />
         </div>
-
-        {/* Filter Bar */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-6 flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari order atau nama pelanggan..."
-              className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-400" />
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              {STATUS_OPTIONS.map(s => (
-                <option key={s} value={s}>{s === "SEMUA" ? "Semua Status" : statusConfig[s]?.label ?? s}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Order Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
-          {loading ? (
-            <div className="py-16 text-center text-gray-400">
-              <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-              Memuat data...
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="py-16 text-center text-gray-400">Tidak ada order ditemukan</div>
-          ) : (
-            <div className="divide-y">
-              {filtered.map((order) => {
-                const s = statusConfig[order.status] ?? { label: order.status, color: "bg-gray-100 text-gray-600" };
-                return (
-                  <Link
-                    key={order.id}
-                    href={`/admin/orders/${order.id}`}
-                    className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="bg-primary-50 p-2.5 rounded-xl">
-                        <Package className="w-4 h-4 text-primary-600" />
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-800 text-sm">{order.orderNumber}</div>
-                        <div className="text-xs text-gray-400">
-                          {order.user?.name} · {order.shoeType?.name} × {order.quantity}
-                        </div>
-                        <div className="text-xs text-gray-300">
-                          {new Date(order.createdAt).toLocaleDateString("id-ID", {
-                            day: "numeric", month: "short", year: "numeric"
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="font-medium text-primary-900 text-sm hidden md:block">
-                        Rp {order.totalPrice?.toLocaleString("id-ID")}
-                      </span>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${s.color}`}>
-                        {s.label}
-                      </span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Filter style={{ width: 16, height: 16, color: "#94a3b8" }} />
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            style={{
+              border: "1px solid #e2e8f0", borderRadius: 10,
+              padding: "10px 12px", fontSize: 13,
+              outline: "none", fontFamily: "var(--font-body)",
+              background: "#fff", color: "#0f172a",
+            }}
+          >
+            {STATUS_OPTIONS.map(s => (
+              <option key={s} value={s}>{s === "SEMUA" ? "Semua Status" : statusConfig[s]?.label ?? s}</option>
+            ))}
+          </select>
         </div>
       </div>
+
+      {/* Order List */}
+      <div style={{
+        background: "#fff", borderRadius: 16,
+        border: "1px solid #e2e8f0", overflow: "hidden",
+      }}>
+        {loading ? (
+          <div style={{ padding: 64, textAlign: "center", color: "#94a3b8" }}>
+            <div style={{
+              width: 32, height: 32, border: "2px solid #16a34a",
+              borderTopColor: "transparent", borderRadius: "50%",
+              animation: "spin 0.7s linear infinite",
+              margin: "0 auto 12px",
+            }} />
+            Memuat data...
+          </div>
+        ) : filtered.length === 0 ? (
+          <div style={{ padding: 64, textAlign: "center", color: "#94a3b8", fontSize: 14 }}>
+            Tidak ada order ditemukan
+          </div>
+        ) : (
+          <div>
+            {filtered.map((order, i) => {
+              const s = statusConfig[order.status] ?? { label: order.status, color: "bg-gray-100 text-gray-600" };
+              return (
+                <Link
+                  key={order.id}
+                  href={`/admin/orders/${order.id}`}
+                  style={{
+                    display: "flex", alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "16px 24px",
+                    borderTop: i === 0 ? "none" : "1px solid #f1f5f9",
+                    textDecoration: "none",
+                    transition: "background 0.15s",
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "#f8fafc"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    <div style={{
+                      background: "#dcfce7", padding: 10, borderRadius: 10,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      <Package style={{ width: 16, height: 16, color: "#16a34a" }} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: "#0f172a" }}>
+                        {order.orderNumber}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
+                        {order.user?.name} · {order.shoeType?.name} × {order.quantity}
+                      </div>
+                      <div style={{ fontSize: 11, color: "#cbd5e1", marginTop: 1 }}>
+                        {new Date(order.createdAt).toLocaleDateString("id-ID", {
+                          day: "numeric", month: "short", year: "numeric",
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                    <span style={{ fontSize: 13.5, fontWeight: 600, color: "#0f172a" }}>
+                      Rp {order.totalPrice?.toLocaleString("id-ID")}
+                    </span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${s.color}`}>
+                      {s.label}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

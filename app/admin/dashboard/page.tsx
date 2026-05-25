@@ -84,28 +84,7 @@ export default function AdminDashboardPage() {
   const handleLogout = () => { logout(); router.push("/"); };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navbar */}
-      <nav className="bg-primary-900 text-white sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="bg-primary-600 p-1.5 rounded-lg">
-              <Shirt className="w-4 h-4" />
-            </div>
-            <span className="font-bold">CuciSepatu<span className="text-primary-500">.id</span></span>
-            <span className="bg-yellow-400 text-primary-900 text-xs font-bold px-2 py-0.5 rounded-full ml-2">ADMIN</span>
-          </div>
-          <div className="flex items-center gap-6">
-            <Link href="/admin/dashboard" className="text-sm text-white font-medium">Dashboard</Link>
-            <Link href="/admin/orders" className="text-sm text-blue-200 hover:text-white transition">Orders</Link>
-            <button onClick={handleLogout} className="flex items-center gap-1.5 text-sm text-blue-200 hover:text-white transition">
-              <LogOut className="w-4 h-4" /> Keluar
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div>
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-primary-900">Admin Dashboard</h1>
           <p className="text-gray-400 text-sm">Ringkasan bisnis CuciSepatu.id</p>
@@ -188,6 +167,5 @@ export default function AdminDashboardPage() {
           </>
         )}
       </div>
-    </div>
   );
 }
