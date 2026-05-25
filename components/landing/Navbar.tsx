@@ -1,58 +1,80 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, X, Shirt } from "lucide-react";
 
 export default function Navbar() {
-  const [open, setOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <nav className="fixed top-0 w-full bg-white/90 backdrop-blur-md shadow-sm z-50">
-      <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+    <nav style={{
+      position: "sticky",
+      top: 0,
+      zIndex: 100,
+      background: "rgba(255,255,255,0.95)",
+      backdropFilter: "blur(12px)",
+      borderBottom: "1px solid #e2e8f0",
+    }}>
+      <div className="max-w-6xl mx-auto px-8 h-16 flex items-center justify-between">
         {/* Logo */}
-        <div className="flex items-center gap-2">
-          <div className="bg-primary-600 p-2 rounded-xl">
-            <Shirt className="text-white w-5 h-5" />
-          </div>
-          <span className="font-bold text-xl text-primary-900">
-            CuciSepatu<span className="text-primary-500">.id</span>
-          </span>
-        </div>
+        <Link href="/" style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20, color: "#0f172a", letterSpacing: "-0.5px" }}>
+          Nyuciin<span style={{ color: "#16a34a" }}>Aja</span>
+        </Link>
 
-        {/* Desktop Menu */}
-        <div className="hidden md:flex items-center gap-8">
-          <a href="#services" className="text-gray-600 hover:text-primary-600 transition">Layanan</a>
-          <a href="#how" className="text-gray-600 hover:text-primary-600 transition">Cara Kerja</a>
-          <a href="#pricing" className="text-gray-600 hover:text-primary-600 transition">Harga</a>
-          <a href="#testimonials" className="text-gray-600 hover:text-primary-600 transition">Testimoni</a>
-          <Link href="/auth/login" className="text-primary-600 font-medium hover:text-primary-700 transition">
+        {/* Desktop Nav */}
+        <div className="hidden md:flex items-center gap-1">
+          {[
+            { label: "Layanan", href: "#services" },
+            { label: "Cara Kerja", href: "#how-it-works" },
+            { label: "Ulasan", href: "#testimonials" },
+          ].map((item) => (
+            <a
+              key={item.label}
+              href={item.href}
+              style={{ padding: "7px 14px", borderRadius: 8, fontSize: 13.5, fontWeight: 500, color: "#475569" }}
+              className="hover:bg-slate-100 hover:text-slate-900 transition-all"
+            >
+              {item.label}
+            </a>
+          ))}
+          <div style={{ width: 1, height: 20, background: "#e2e8f0", margin: "0 8px" }} />
+          <Link
+            href="/auth/login"
+            style={{ padding: "7px 14px", borderRadius: 8, fontSize: 13.5, fontWeight: 600, color: "#475569" }}
+            className="hover:bg-slate-100 hover:text-slate-900 transition-all"
+          >
             Masuk
           </Link>
           <Link
             href="/auth/register"
-            className="bg-primary-600 text-white px-5 py-2 rounded-full font-medium hover:bg-primary-700 transition shadow-md"
+            style={{ padding: "9px 20px", borderRadius: 8, fontSize: 13.5, fontWeight: 600, background: "#16a34a", color: "#fff", marginLeft: 4 }}
+            className="hover:bg-green-700 transition-all"
           >
             Daftar Gratis
           </Link>
         </div>
 
-        {/* Mobile Toggle */}
-        <button className="md:hidden" onClick={() => setOpen(!open)}>
-          {open ? <X /> : <Menu />}
+        {/* Mobile hamburger */}
+        <button
+          className="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100"
+          onClick={() => setMenuOpen(!menuOpen)}
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {menuOpen
+              ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            }
+          </svg>
         </button>
       </div>
 
-      {/* Mobile Menu */}
-      {open && (
-        <div className="md:hidden bg-white border-t px-4 py-4 flex flex-col gap-4">
-          <a href="#services" className="text-gray-600">Layanan</a>
-          <a href="#how" className="text-gray-600">Cara Kerja</a>
-          <a href="#pricing" className="text-gray-600">Harga</a>
-          <a href="#testimonials" className="text-gray-600">Testimoni</a>
-          <Link href="/auth/login" className="text-primary-600 font-medium">Masuk</Link>
-          <Link href="/auth/register" className="bg-primary-600 text-white text-center px-5 py-2 rounded-full font-medium">
-            Daftar Gratis
-          </Link>
+      {menuOpen && (
+        <div className="md:hidden bg-white border-t border-slate-100 px-6 py-4 flex flex-col gap-2">
+          <a href="#services" onClick={() => setMenuOpen(false)} className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50">Layanan</a>
+          <a href="#how-it-works" onClick={() => setMenuOpen(false)} className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50">Cara Kerja</a>
+          <a href="#testimonials" onClick={() => setMenuOpen(false)} className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50">Ulasan</a>
+          <hr className="border-slate-100 my-1" />
+          <Link href="/auth/login" className="px-3 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50">Masuk</Link>
+          <Link href="/auth/register" className="px-3 py-2.5 rounded-lg text-sm font-semibold bg-green-600 text-white text-center hover:bg-green-700">Daftar Gratis</Link>
         </div>
       )}
     </nav>

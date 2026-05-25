@@ -1,187 +1,273 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Shirt, Eye, EyeOff, Loader2 } from "lucide-react";
-import { saveAuth } from "@/lib/auth-client";
 
-const schema = z.object({
-  name: z.string().min(2, "Nama minimal 2 karakter"),
-  email: z.string().email("Email tidak valid"),
-  phone: z.string().min(10, "Nomor HP tidak valid"),
-  address: z.string().min(10, "Alamat terlalu pendek"),
-  password: z.string().min(6, "Password minimal 6 karakter"),
-  confirmPassword: z.string(),
-}).refine((d) => d.password === d.confirmPassword, {
-  message: "Password tidak cocok",
-  path: ["confirmPassword"],
-});
+const features = [
+  {
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    ),
+    title: "Tracking Real-time",
+    desc: "Pantau status cuci sepatumu setiap saat melalui dashboard",
+  },
+  {
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+      </svg>
+    ),
+    title: "Bayar Mudah",
+    desc: "GoPay, OVO, Virtual Account, dan metode lainnya via Midtrans",
+  },
+  {
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+      </svg>
+    ),
+    title: "Loyalty Points",
+    desc: "Kumpul poin setiap transaksi, tukarkan dengan diskon menarik",
+  },
+];
 
-type FormData = z.infer<typeof schema>;
+const inputStyle = {
+  width: "100%",
+  padding: "10px 14px",
+  border: "1.5px solid #e2e8f0",
+  borderRadius: 8,
+  fontSize: 14,
+  fontFamily: "var(--font-body)",
+  outline: "none",
+  color: "#0f172a",
+  background: "#fff",
+  boxSizing: "border-box" as const,
+  transition: "border-color 0.15s",
+};
+
+const labelStyle = {
+  fontSize: 12.5,
+  fontWeight: 600,
+  marginBottom: 7,
+  display: "block",
+  color: "#0f172a",
+  textTransform: "uppercase" as const,
+  letterSpacing: "0.3px",
+};
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [showPass, setShowPass] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
-    resolver: zodResolver(schema),
-  });
-
-  const onSubmit = async (data: FormData) => {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: data.name,
-          email: data.email,
-          phone: data.phone,
-          address: data.address,
-          password: data.password,
-        }),
-      });
-      const result = await res.json();
-
-      if (!res.ok) {
-        setError(result.message || "Registrasi gagal");
-        return;
-      }
-
-      saveAuth(result.token, result.user);
-      router.push("/dashboard");
-    } catch {
-      setError("Terjadi kesalahan, coba lagi");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-900 to-primary-600 flex items-center justify-center px-4 py-12">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+    <div style={{ minHeight: "100vh", display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+
+      {/* ── LEFT — hijau ── */}
+      <div style={{
+        background: "#16a34a",
+        padding: 64,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        color: "#fff",
+      }}>
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <div className="bg-primary-600 p-2 rounded-xl">
-              <Shirt className="text-white w-6 h-6" />
-            </div>
-            <span className="font-bold text-2xl text-primary-900">
-              CuciSepatu<span className="text-primary-500">.id</span>
-            </span>
-          </div>
-          <h1 className="text-xl font-bold text-gray-800">Buat Akun Baru</h1>
-          <p className="text-gray-400 text-sm mt-1">Gratis, selesai dalam 1 menit</p>
+        <div style={{
+          fontFamily: "var(--font-display)",
+          fontWeight: 800,
+          fontSize: 22,
+          marginBottom: 44,
+          letterSpacing: "-0.5px",
+        }}>
+          Nyuciin<span style={{ color: "#86efac" }}>Aja</span>
         </div>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm mb-6">
-            {error}
-          </div>
-        )}
+        {/* Headline */}
+        <h1 style={{
+          fontFamily: "var(--font-display)",
+          fontSize: 40,
+          fontWeight: 800,
+          marginBottom: 14,
+          letterSpacing: "-1px",
+          lineHeight: 1.1,
+        }}>
+          Sepatu Bersih,<br />Hidup Lebih Keren
+        </h1>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {/* Nama */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
-            <input
-              {...register("name")}
-              placeholder="Budi Santoso"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition"
-            />
-            {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
+        <p style={{ fontSize: 15, opacity: 0.85, lineHeight: 1.7, marginBottom: 44 }}>
+          Bergabunglah dengan ribuan pelanggan yang sudah mempercayakan
+          sepatu mereka kepada kami.
+        </p>
+
+        {/* Feature list */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          {features.map((f) => (
+            <div key={f.title} style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: 9,
+                background: "rgba(255,255,255,0.18)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0, color: "#fff",
+              }}>
+                {f.icon}
+              </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 3 }}>{f.title}</div>
+                <div style={{ fontSize: 12.5, opacity: 0.78, lineHeight: 1.5 }}>{f.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── RIGHT — form ── */}
+      <div style={{
+        background: "#f8fafc",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 48,
+        overflowY: "auto",
+      }}>
+        <div style={{
+          background: "#fff",
+          border: "1px solid #e2e8f0",
+          borderRadius: 28,
+          padding: 40,
+          width: "100%",
+          maxWidth: 420,
+          boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06)",
+        }}>
+          <h2 style={{
+            fontFamily: "var(--font-display)",
+            fontSize: 24, fontWeight: 800,
+            marginBottom: 5, letterSpacing: "-0.4px", color: "#0f172a",
+          }}>
+            Buat Akun Baru
+          </h2>
+          <p style={{ fontSize: 14, color: "#475569", marginBottom: 28 }}>
+            Daftar dan dapatkan diskon 20% pesanan pertama
+          </p>
+
+          {/* Nama depan + belakang */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
+            <div>
+              <label style={labelStyle}>Nama Depan</label>
+              <input
+                type="text"
+                placeholder="Andi"
+                style={inputStyle}
+                onFocus={(e) => (e.target.style.borderColor = "#16a34a")}
+                onBlur={(e) => (e.target.style.borderColor = "#e2e8f0")}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Nama Belakang</label>
+              <input
+                type="text"
+                placeholder="Rahmadan"
+                style={inputStyle}
+                onFocus={(e) => (e.target.style.borderColor = "#16a34a")}
+                onBlur={(e) => (e.target.style.borderColor = "#e2e8f0")}
+              />
+            </div>
           </div>
 
           {/* Email */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <div style={{ marginBottom: 18 }}>
+            <label style={labelStyle}>Email</label>
             <input
-              {...register("email")}
               type="email"
-              placeholder="nama@email.com"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition"
+              placeholder="emailkamu.com"
+              style={inputStyle}
+              onFocus={(e) => (e.target.style.borderColor = "#16a34a")}
+              onBlur={(e) => (e.target.style.borderColor = "#e2e8f0")}
             />
-            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
           </div>
 
-          {/* Phone */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nomor HP (WhatsApp)</label>
+          {/* No HP */}
+          <div style={{ marginBottom: 18 }}>
+            <label style={labelStyle}>No. HP / WhatsApp</label>
             <input
-              {...register("phone")}
+              type="tel"
               placeholder="08xxxxxxxxxx"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition"
+              style={inputStyle}
+              onFocus={(e) => (e.target.style.borderColor = "#16a34a")}
+              onBlur={(e) => (e.target.style.borderColor = "#e2e8f0")}
             />
-            {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
-          </div>
-
-          {/* Address */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Alamat Lengkap</label>
-            <textarea
-              {...register("address")}
-              placeholder="Jl. Contoh No. 1, Semarang"
-              rows={2}
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition resize-none"
-            />
-            {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address.message}</p>}
           </div>
 
           {/* Password */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <div className="relative">
+          <div style={{ marginBottom: 26 }}>
+            <label style={labelStyle}>Password</label>
+            <div style={{ position: "relative" }}>
               <input
-                {...register("password")}
                 type={showPass ? "text" : "password"}
-                placeholder="Minimal 6 karakter"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition pr-12"
+                placeholder="Minimal 8 karakter"
+                style={{ ...inputStyle, paddingRight: 40 }}
+                onFocus={(e) => (e.target.style.borderColor = "#16a34a")}
+                onBlur={(e) => (e.target.style.borderColor = "#e2e8f0")}
               />
               <button
                 type="button"
                 onClick={() => setShowPass(!showPass)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+                style={{
+                  position: "absolute", right: 12, top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none", border: "none",
+                  cursor: "pointer", color: "#94a3b8", padding: 0,
+                }}
               >
-                {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showPass ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                )}
               </button>
             </div>
-            {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
           </div>
 
-          {/* Confirm Password */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Konfirmasi Password</label>
-            <input
-              {...register("confirmPassword")}
-              type="password"
-              placeholder="Ulangi password"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 transition"
-            />
-            {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword.message}</p>}
-          </div>
-
+          {/* Submit */}
           <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-primary-600 text-white py-3 rounded-xl font-bold hover:bg-primary-700 transition flex items-center justify-center gap-2 disabled:opacity-60 mt-2"
+            style={{
+              width: "100%", padding: 12, borderRadius: 9,
+              fontSize: 14.5, fontWeight: 600,
+              background: "#16a34a", color: "#fff",
+              border: "none", cursor: "pointer",
+              fontFamily: "var(--font-body)",
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={(e) => ((e.target as HTMLButtonElement).style.background = "#15803d")}
+            onMouseLeave={(e) => ((e.target as HTMLButtonElement).style.background = "#16a34a")}
           >
-            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {loading ? "Memproses..." : "Daftar Sekarang"}
+            Daftar Sekarang
           </button>
-        </form>
 
-        <p className="text-center text-sm text-gray-400 mt-6">
-          Sudah punya akun?{" "}
-          <Link href="/auth/login" className="text-primary-600 font-medium hover:underline">
-            Masuk
-          </Link>
-        </p>
+          {/* Terms note */}
+          <p style={{ marginTop: 14, fontSize: 12, color: "#94a3b8", textAlign: "center", lineHeight: 1.6 }}>
+            Dengan mendaftar, kamu menyetujui{" "}
+            <Link href="#" style={{ color: "#16a34a", fontWeight: 600 }}>Syarat & Ketentuan</Link>
+            {" "}dan{" "}
+            <Link href="#" style={{ color: "#16a34a", fontWeight: 600 }}>Kebijakan Privasi</Link>
+          </p>
+
+          {/* Footer link */}
+          <p style={{ marginTop: 16, textAlign: "center", fontSize: 13, color: "#475569" }}>
+            Sudah punya akun?{" "}
+            <Link
+              href="/auth/login"
+              style={{ color: "#16a34a", fontWeight: 600 }}
+            >
+              Masuk di sini
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,49 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-display: "Bricolage Grotesque", sans-serif;
+    --font-body: "Instrument Sans", sans-serif;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background: #f8fafc;
+    color: #0f172a;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  a {
+    text-decoration: none;
+    color: inherit;
+  }
+}
+
+.font-display {
+  font-family: var(--font-display) !important;
+}
+
+.font-body {
+  font-family: var(--font-body) !important;
+}
+
+
 
 @custom-variant dark (&:is(.dark *));
 
