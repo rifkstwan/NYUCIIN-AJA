@@ -138,7 +138,7 @@ export default function RiwayatPage() {
                       onMouseEnter={e => (e.currentTarget.style.background = "#15803d")}
                       onMouseLeave={e => (e.currentTarget.style.background = "#16a34a")}
                     >
-                      💳 Bayar Sekarang
+                      Bayar Sekarang
                     </button>
                   </div>
                 )}
