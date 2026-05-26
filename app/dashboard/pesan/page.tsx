@@ -64,11 +64,10 @@ const labelStyle = {
 
 export default function PesanPage() {
   const router = useRouter();
-  const [shoeTypes, setShoeTypes] = useState<ShoeType[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [isFirstOrder, setIsFirstOrder] = useState(false);
-  const [discount, setDiscount] = useState(0);
+  const [shoeTypes, setShoeTypes]       = useState<ShoeType[]>([]);
+  const [loading, setLoading]           = useState(false);
+  const [error, setError]               = useState("");
+  const [isFirstOrder, setIsFirstOrder] = useState<boolean | null>(null);
 
   const [form, setForm] = useState({
     shoeTypeId: "",
@@ -83,11 +82,12 @@ export default function PesanPage() {
     const token = getToken();
     if (!token) { router.push("/auth/login"); return; }
     fetchShoeTypes(token);
+    checkFirstOrder(token);
   }, []);
 
   const fetchShoeTypes = async (token: string) => {
     try {
-      const res = await fetch("/api/shoe-types", {
+      const res  = await fetch("/api/shoe-types", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -97,8 +97,23 @@ export default function PesanPage() {
     }
   };
 
+  const checkFirstOrder = async (token: string) => {
+    try {
+      const res    = await fetch("/api/orders", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data   = await res.json();
+      const orders = Array.isArray(data) ? data : (data.orders ?? []);
+      setIsFirstOrder(orders.length === 0);
+    } catch {
+      setIsFirstOrder(false);
+    }
+  };
+
   const selectedShoe = shoeTypes.find((s) => s.id === form.shoeTypeId);
-  const totalPrice = selectedShoe ? selectedShoe.basePrice * form.quantity : 0;
+  const baseTotal    = selectedShoe ? selectedShoe.basePrice * form.quantity : 0;
+  const discount     = isFirstOrder && baseTotal > 0 ? Math.round(baseTotal * 0.2) : 0;
+  const totalPrice   = baseTotal - discount;
   const selectedInfo = selectedShoe ? LAYANAN_INFO[selectedShoe.name] : null;
 
   const handleChange = (
@@ -113,7 +128,7 @@ export default function PesanPage() {
     e.preventDefault();
     setError("");
 
-    if (!form.shoeTypeId) { setError("Pilih jenis layanan terlebih dahulu."); return; }
+    if (!form.shoeTypeId)    { setError("Pilih jenis layanan terlebih dahulu."); return; }
     if (!form.pickupAddress) { setError("Alamat pickup wajib diisi."); return; }
 
     const token = getToken();
@@ -121,7 +136,6 @@ export default function PesanPage() {
 
     setLoading(true);
     try {
-      // 1. Buat order
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -137,7 +151,6 @@ export default function PesanPage() {
       const orderData = await res.json();
       if (!res.ok) { setError(orderData.message || "Gagal membuat order."); return; }
 
-      // 2. Buat transaksi Midtrans
       const payRes = await fetch("/api/payments/create", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -146,16 +159,15 @@ export default function PesanPage() {
       const payData = await payRes.json();
       if (!payRes.ok) { setError("Gagal membuat transaksi pembayaran."); return; }
 
-      // 3. Buka Snap popup
       // @ts-ignore
       window.snap.pay(payData.snapToken, {
         onSuccess: () => router.push("/dashboard/riwayat"),
         onPending: () => router.push("/dashboard/riwayat"),
-        onError: () => setError("Pembayaran gagal, silakan coba lagi."),
-        onClose: () => router.push("/dashboard/riwayat"),
+        onError:   () => setError("Pembayaran gagal, silakan coba lagi."),
+        onClose:   () => router.push("/dashboard/riwayat"),
       });
 
-    } catch (err) {
+    } catch {
       setError("Terjadi kesalahan. Periksa koneksi internet kamu.");
     } finally {
       setLoading(false);
@@ -165,12 +177,8 @@ export default function PesanPage() {
   return (
     <div>
       {/* Header */}
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{
-          fontSize: 24, fontWeight: 800,
-          color: "#0f172a", marginBottom: 4,
-          fontFamily: "var(--font-display)",
-        }}>
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 800, color: "#0f172a", marginBottom: 4, fontFamily: "var(--font-display)" }}>
           Order Baru
         </h1>
         <p style={{ fontSize: 14, color: "#64748b" }}>
@@ -178,10 +186,44 @@ export default function PesanPage() {
         </p>
       </div>
 
+      {/* Banner Diskon Pertama */}
+      {isFirstOrder === true && (
+        <div style={{
+          background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
+          borderRadius: 14, padding: "16px 20px",
+          display: "flex", alignItems: "center", gap: 14,
+          marginBottom: 24,
+          boxShadow: "0 4px 20px rgba(22,163,74,0.25)",
+        }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: 12,
+            background: "rgba(255,255,255,0.2)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 22 }}>🎉</span>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "#fff", marginBottom: 2 }}>
+              Selamat! Kamu dapat diskon 20% untuk order pertama
+            </div>
+            <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.8)" }}>
+              Diskon otomatis diterapkan saat kamu checkout — tidak perlu kode promo apapun.
+            </div>
+          </div>
+          <div style={{
+            background: "#fff", borderRadius: 10,
+            padding: "6px 14px", flexShrink: 0,
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 900, color: "#16a34a" }}>HEMAT 20%</div>
+          </div>
+        </div>
+      )}
+
       {/* Pilih Paket */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 28 }}>
         {shoeTypes.map((s) => {
-          const info = LAYANAN_INFO[s.name];
+          const info   = LAYANAN_INFO[s.name];
           const active = form.shoeTypeId === s.id;
           return (
             <div
@@ -191,8 +233,7 @@ export default function PesanPage() {
                 background: "#fff",
                 border: `2px solid ${active ? "#16a34a" : "#e2e8f0"}`,
                 borderRadius: 14, padding: 20,
-                cursor: "pointer",
-                transition: "all 0.15s",
+                cursor: "pointer", transition: "all 0.15s",
                 position: "relative",
                 boxShadow: active ? "0 0 0 3px rgba(22,163,74,0.1)" : "none",
               }}
@@ -248,10 +289,7 @@ export default function PesanPage() {
 
         {/* FORM */}
         <form onSubmit={handleSubmit}>
-          <div style={{
-            background: "#fff", border: "1px solid #e2e8f0",
-            borderRadius: 16, padding: 28,
-          }}>
+          <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 16, padding: 28 }}>
             {error && (
               <div style={{
                 background: "#fee2e2", border: "1px solid #fecaca",
@@ -262,38 +300,25 @@ export default function PesanPage() {
               </div>
             )}
 
-            {/* Jumlah */}
             <div style={{ marginBottom: 20 }}>
               <label style={labelStyle}>Jumlah Pasang</label>
-              <input
-                type="number"
-                name="quantity"
-                min={1}
-                max={10}
-                value={form.quantity}
-                onChange={handleChange}
-                style={inputStyle}
+              <input type="number" name="quantity" min={1} max={10}
+                value={form.quantity} onChange={handleChange} style={inputStyle}
                 onFocus={(e) => (e.target.style.borderColor = "#16a34a")}
-                onBlur={(e) => (e.target.style.borderColor = "#e2e8f0")}
+                onBlur={(e)  => (e.target.style.borderColor = "#e2e8f0")}
               />
             </div>
 
-            {/* Alamat Pickup */}
             <div style={{ marginBottom: 20 }}>
               <label style={labelStyle}>Alamat Pickup</label>
-              <input
-                type="text"
-                name="pickupAddress"
+              <input type="text" name="pickupAddress"
                 placeholder="Jl. Contoh No. 12, Semarang"
-                value={form.pickupAddress}
-                onChange={handleChange}
-                style={inputStyle}
+                value={form.pickupAddress} onChange={handleChange} style={inputStyle}
                 onFocus={(e) => (e.target.style.borderColor = "#16a34a")}
-                onBlur={(e) => (e.target.style.borderColor = "#e2e8f0")}
+                onBlur={(e)  => (e.target.style.borderColor = "#e2e8f0")}
               />
             </div>
 
-            {/* Alamat Pengiriman */}
             <div style={{ marginBottom: 20 }}>
               <label style={labelStyle}>
                 Alamat Pengiriman{" "}
@@ -301,60 +326,42 @@ export default function PesanPage() {
                   (opsional, kosongkan jika sama)
                 </span>
               </label>
-              <input
-                type="text"
-                name="deliveryAddress"
+              <input type="text" name="deliveryAddress"
                 placeholder="Sama dengan alamat pickup"
-                value={form.deliveryAddress}
-                onChange={handleChange}
-                style={inputStyle}
+                value={form.deliveryAddress} onChange={handleChange} style={inputStyle}
                 onFocus={(e) => (e.target.style.borderColor = "#16a34a")}
-                onBlur={(e) => (e.target.style.borderColor = "#e2e8f0")}
+                onBlur={(e)  => (e.target.style.borderColor = "#e2e8f0")}
               />
             </div>
 
-            {/* Jadwal Pickup */}
             <div style={{ marginBottom: 20 }}>
               <label style={labelStyle}>
                 Jadwal Pickup{" "}
-                <span style={{ color: "#94a3b8", fontWeight: 400, textTransform: "none" }}>
-                  (opsional)
-                </span>
+                <span style={{ color: "#94a3b8", fontWeight: 400, textTransform: "none" }}>(opsional)</span>
               </label>
-              <input
-                type="datetime-local"
-                name="scheduledAt"
-                value={form.scheduledAt}
-                onChange={handleChange}
-                style={inputStyle}
+              <input type="datetime-local" name="scheduledAt"
+                value={form.scheduledAt} onChange={handleChange} style={inputStyle}
                 onFocus={(e) => (e.target.style.borderColor = "#16a34a")}
-                onBlur={(e) => (e.target.style.borderColor = "#e2e8f0")}
+                onBlur={(e)  => (e.target.style.borderColor = "#e2e8f0")}
               />
             </div>
 
-            {/* Catatan */}
             <div style={{ marginBottom: 24 }}>
               <label style={labelStyle}>
                 Catatan{" "}
-                <span style={{ color: "#94a3b8", fontWeight: 400, textTransform: "none" }}>
-                  (opsional)
-                </span>
+                <span style={{ color: "#94a3b8", fontWeight: 400, textTransform: "none" }}>(opsional)</span>
               </label>
-              <textarea
-                name="notes"
+              <textarea name="notes"
                 placeholder="Contoh: Sepatu putih ada noda di bagian kiri"
-                value={form.notes}
-                onChange={handleChange}
-                rows={3}
+                value={form.notes} onChange={handleChange} rows={3}
                 style={{ ...inputStyle, resize: "vertical", minHeight: 80 }}
                 onFocus={(e) => (e.target.style.borderColor = "#16a34a")}
-                onBlur={(e) => (e.target.style.borderColor = "#e2e8f0")}
+                onBlur={(e)  => (e.target.style.borderColor = "#e2e8f0")}
               />
             </div>
 
             <button
-              type="submit"
-              disabled={loading}
+              type="submit" disabled={loading}
               style={{
                 width: "100%", padding: "12px",
                 borderRadius: 9, fontSize: 14.5, fontWeight: 600,
@@ -372,8 +379,7 @@ export default function PesanPage() {
                   <span style={{
                     width: 16, height: 16, borderRadius: "50%",
                     border: "2px solid #fff", borderTopColor: "transparent",
-                    animation: "spin 0.7s linear infinite",
-                    display: "inline-block",
+                    animation: "spin 0.7s linear infinite", display: "inline-block",
                   }} />
                   Memproses...
                 </>
@@ -389,8 +395,7 @@ export default function PesanPage() {
           position: "sticky", top: 24,
         }}>
           <h3 style={{
-            fontSize: 13, fontWeight: 700,
-            color: "#0f172a", marginBottom: 16,
+            fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 16,
             textTransform: "uppercase", letterSpacing: "0.3px",
           }}>
             Ringkasan Order
@@ -399,9 +404,7 @@ export default function PesanPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5 }}>
               <span style={{ color: "#64748b" }}>Layanan</span>
-              <span style={{ fontWeight: 600, color: "#0f172a" }}>
-                {selectedShoe?.name || "-"}
-              </span>
+              <span style={{ fontWeight: 600, color: "#0f172a" }}>{selectedShoe?.name || "-"}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5 }}>
               <span style={{ color: "#64748b" }}>Harga satuan</span>
@@ -413,13 +416,39 @@ export default function PesanPage() {
               <span style={{ color: "#64748b" }}>Jumlah</span>
               <span style={{ fontWeight: 600, color: "#0f172a" }}>{form.quantity} pasang</span>
             </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5 }}>
+              <span style={{ color: "#64748b" }}>Subtotal</span>
+              <span style={{ fontWeight: 600, color: "#0f172a" }}>
+                {baseTotal > 0 ? `Rp ${baseTotal.toLocaleString("id-ID")}` : "-"}
+              </span>
+            </div>
+
+            {isFirstOrder && discount > 0 && (
+              <div style={{
+                display: "flex", justifyContent: "space-between", fontSize: 13.5,
+                background: "#f0fdf4", borderRadius: 8, padding: "8px 10px",
+                border: "1px solid #bbf7d0",
+              }}>
+                <span style={{ color: "#16a34a", fontWeight: 600 }}>Diskon 20%</span>
+                <span style={{ fontWeight: 700, color: "#16a34a" }}>
+                  - Rp {discount.toLocaleString("id-ID")}
+                </span>
+              </div>
+            )}
 
             <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 12, marginTop: 4 }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontWeight: 700, color: "#0f172a" }}>Total</span>
-                <span style={{ fontWeight: 800, fontSize: 18, color: "#16a34a" }}>
-                  {totalPrice > 0 ? `Rp ${totalPrice.toLocaleString("id-ID")}` : "-"}
-                </span>
+                <div style={{ textAlign: "right" }}>
+                  {isFirstOrder && discount > 0 && (
+                    <div style={{ fontSize: 11.5, color: "#94a3b8", textDecoration: "line-through" }}>
+                      Rp {baseTotal.toLocaleString("id-ID")}
+                    </div>
+                  )}
+                  <div style={{ fontWeight: 800, fontSize: 18, color: "#16a34a" }}>
+                    {totalPrice > 0 ? `Rp ${totalPrice.toLocaleString("id-ID")}` : "-"}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -447,7 +476,7 @@ export default function PesanPage() {
             background: "#f0fdf4", borderRadius: 8,
             fontSize: 12.5, color: "#16a34a", lineHeight: 1.6,
           }}>
-            Pembayaran dilakukan setelah sepatu selesai dicuci dan siap dikirim.
+            Pembayaran aman via Midtrans. kamu akan diarahkan ke halaman pembayaran setelah order dibuat.
           </div>
         </div>
       </div>

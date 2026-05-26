@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { logout } from "@/lib/auth-client";
 
 const navItems = [
   {
@@ -62,6 +63,12 @@ const navItems = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router   = useRouter();
+
+  const handleLogout = () => {
+    logout();
+    router.push("/auth/login");
+  };
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", background: "#f8fafc" }}>
@@ -88,8 +95,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <nav style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
           {navItems.map((item) => {
             const active =
-  pathname === item.href ||
-  (item.href === "/dashboard/riwayat" && pathname.startsWith("/dashboard/orders"));
+              pathname === item.href ||
+              (item.href === "/dashboard/riwayat" && pathname.startsWith("/dashboard/orders"));
             return (
               <Link
                 key={item.href}
@@ -112,6 +119,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
 
         <button
+          onClick={handleLogout}
           style={{
             display: "flex", alignItems: "center", gap: 10,
             padding: "9px 12px", borderRadius: 8,
@@ -119,9 +127,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             color: "#ef4444", background: "transparent",
             border: "none", cursor: "pointer",
             width: "100%", textAlign: "left",
+            transition: "background 0.15s",
           }}
+          onMouseEnter={e => e.currentTarget.style.background = "#fef2f2"}
+          onMouseLeave={e => e.currentTarget.style.background = "transparent"}
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg style={{ width: 16, height: 16, flexShrink: 0 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
           Keluar

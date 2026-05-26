@@ -37,7 +37,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Jenis sepatu tidak ditemukan' }, { status: 404 })
     }
 
-    const totalPrice = shoeType.basePrice * quantity + surcharge
+    // Cek apakah ini order pertama user
+    const orderCount = await prisma.order.count({
+      where: { userId: user!.id },
+    })
+    const isFirstOrder = orderCount === 0
+
+    const baseTotal    = shoeType.basePrice * quantity + surcharge
+    const discount     = isFirstOrder ? Math.round(baseTotal * 0.2) : 0
+    const totalPrice   = baseTotal - discount
 
     const order = await prisma.$transaction(async (tx) => {
       const newOrder = await tx.order.create({
@@ -64,7 +72,15 @@ export async function POST(req: NextRequest) {
       return newOrder
     })
 
-    return NextResponse.json(order, { status: 201 })
+    return NextResponse.json(
+      {
+        ...order,
+        isFirstOrder,
+        discount,
+        originalPrice: baseTotal,
+      },
+      { status: 201 }
+    )
   } catch (err) {
     console.error(err)
     return NextResponse.json({ message: 'Server error' }, { status: 500 })
