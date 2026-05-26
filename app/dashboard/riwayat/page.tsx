@@ -1,132 +1,111 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getToken } from "@/lib/auth-client";
+import { Package } from "lucide-react";
 
-type TrackingOrder = {
+type Order = {
   id: string;
   orderNumber: string;
   status: string;
+  totalPrice: number;
+  quantity: number;
+  createdAt: string;
   shoeType: { name: string };
-  tracking: { status: string; note: string | null; createdAt: string }[];
 };
 
-const steps = ["BOOKED", "PICKUP", "WASHING", "DRYING", "DELIVERY", "DONE"];
-const stepLabel: Record<string, string> = {
-  BOOKED: "Dipesan", PICKUP: "Pickup", WASHING: "Dicuci",
-  DRYING: "Dikeringkan", DELIVERY: "Diantar", DONE: "Selesai",
+const statusConfig: Record<string, { label: string; color: string }> = {
+  BOOKED:     { label: "Dipesan",      color: "bg-blue-100 text-blue-700" },
+  PICKUP:     { label: "Pickup",       color: "bg-purple-100 text-purple-700" },
+  WASHING:    { label: "Dicuci",       color: "bg-orange-100 text-orange-700" },
+  DRYING:     { label: "Dikeringkan",  color: "bg-yellow-100 text-yellow-700" },
+  DELIVERY:   { label: "Diantar",      color: "bg-cyan-100 text-cyan-700" },
+  DONE:       { label: "Selesai",      color: "bg-green-100 text-green-700" },
+  CANCELLED:  { label: "Dibatalkan",   color: "bg-red-100 text-red-700" },
 };
 
-export default function TrackingPage() {
-  const [orders, setOrders] = useState<TrackingOrder[]>([]);
-  const [selected, setSelected] = useState<TrackingOrder | null>(null);
+export default function RiwayatPage() {
+  const router = useRouter();
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/orders?withTracking=true", {
+    fetch("/api/orders", {
       headers: { Authorization: `Bearer ${getToken()}` },
     })
-      .then((r) => r.json())
-      .then((data) => {
-        const active = (data.orders ?? []).filter(
-          (o: TrackingOrder) => o.status !== "DONE" && o.status !== "CANCELLED"
-        );
-        setOrders(active);
-        if (active.length > 0) setSelected(active[0]);
-      })
+      .then(r => r.json())
+      .then(data => setOrders(data.orders ?? data))
       .finally(() => setLoading(false));
   }, []);
 
-  const currentStep = selected ? steps.indexOf(selected.status) : -1;
-
   return (
     <div>
-      <h1 style={{ fontSize: 22, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>
-        Tracking Order
-      </h1>
-      <p style={{ color: "#64748b", fontSize: 14, marginBottom: 24 }}>
-        Pantau status pesanan aktif kamu
-      </p>
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>Riwayat Order</h1>
+        <p style={{ color: "#64748b", fontSize: 14 }}>Semua pesanan kamu</p>
+      </div>
 
-      {loading ? (
-        <p style={{ color: "#94a3b8" }}>Memuat data...</p>
-      ) : orders.length === 0 ? (
-        <div style={{
-          background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0",
-          padding: "48px 24px", textAlign: "center",
-        }}>
-          <p style={{ color: "#94a3b8", fontSize: 15 }}>Tidak ada order aktif</p>
-        </div>
-      ) : (
-        <div style={{ display: "flex", gap: 20 }}>
-          <div style={{ width: 220, display: "flex", flexDirection: "column", gap: 8 }}>
-            {orders.map((o) => (
-              <button key={o.id} onClick={() => setSelected(o)} style={{
-                background: selected?.id === o.id ? "#dcfce7" : "#fff",
-                border: `1px solid ${selected?.id === o.id ? "#16a34a" : "#e2e8f0"}`,
-                borderRadius: 10, padding: "12px 14px", textAlign: "left",
-                cursor: "pointer", transition: "all 0.15s",
-              }}>
-                <p style={{ fontWeight: 600, fontSize: 13, color: "#0f172a" }}>{o.orderNumber}</p>
-                <p style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{o.shoeType.name}</p>
-              </button>
-            ))}
-          </div>
-
-          {selected && (
+      <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0", overflow: "hidden" }}>
+        {loading ? (
+          <div style={{ padding: 64, textAlign: "center", color: "#94a3b8" }}>
             <div style={{
-              flex: 1, background: "#fff", borderRadius: 12,
-              border: "1px solid #e2e8f0", padding: 24,
-            }}>
-              <p style={{ fontWeight: 700, fontSize: 15, color: "#0f172a", marginBottom: 20 }}>
-                {selected.orderNumber} · {selected.shoeType.name}
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                {steps.map((step, i) => {
-                  const done = i <= currentStep;
-                  const active = i === currentStep;
-                  return (
-                    <div key={step} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                        <div style={{
-                          width: 28, height: 28, borderRadius: "50%",
-                          background: done ? "#16a34a" : "#e2e8f0",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          flexShrink: 0,
-                        }}>
-                          {done && (
-                            <svg width="14" height="14" fill="none" stroke="#fff" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                        </div>
-                        {i < steps.length - 1 && (
-                          <div style={{
-                            width: 2, height: 32,
-                            background: i < currentStep ? "#16a34a" : "#e2e8f0",
-                          }} />
-                        )}
-                      </div>
-                      <div style={{ paddingBottom: 16 }}>
-                        <p style={{
-                          fontSize: 13, fontWeight: active ? 700 : 500,
-                          color: done ? "#0f172a" : "#94a3b8",
-                        }}>
-                          {stepLabel[step]}
-                        </p>
-                        {active && selected.tracking?.slice(-1)[0]?.note && (
-                          <p style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-                            {selected.tracking.slice(-1)[0].note}
-                          </p>
-                        )}
-                      </div>
+              width: 32, height: 32, border: "2px solid #16a34a",
+              borderTopColor: "transparent", borderRadius: "50%",
+              animation: "spin 0.7s linear infinite", margin: "0 auto 12px",
+            }} />
+            Memuat data...
+          </div>
+        ) : orders.length === 0 ? (
+          <div style={{ padding: 64, textAlign: "center", color: "#94a3b8", fontSize: 14 }}>
+            Belum ada order
+          </div>
+        ) : (
+          orders.map((order, i) => {
+            const s = statusConfig[order.status] ?? { label: order.status, color: "bg-gray-100 text-gray-600" };
+            return (
+              <div
+                key={order.id}
+                onClick={() => router.push(`/dashboard/tracking?order=${order.id}`)}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "16px 24px", cursor: "pointer",
+                  borderTop: i === 0 ? "none" : "1px solid #f1f5f9",
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = "#f8fafc"}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div style={{
+                    background: "#dcfce7", padding: 10, borderRadius: 10,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <Package style={{ width: 16, height: 16, color: "#16a34a" }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: "#0f172a" }}>{order.orderNumber}</div>
+                    <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
+                      {order.shoeType?.name} × {order.quantity}
                     </div>
-                  );
-                })}
+                    <div style={{ fontSize: 11, color: "#cbd5e1", marginTop: 1 }}>
+                      {new Date(order.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 600, color: "#0f172a" }}>
+                    Rp {order.totalPrice?.toLocaleString("id-ID")}
+                  </span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${s.color}`}>
+                    {s.label}
+                  </span>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            );
+          })
+        )}
+      </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

@@ -26,45 +26,48 @@ export async function POST(req: NextRequest) {
 
   // Reuse snap token jika belum expired
   if (order.payment?.snapToken && order.payment.status === 'PENDING') {
-    return NextResponse.json({ snapToken: order.payment.snapToken })
+    return NextResponse.json({ snapToken: order.payment.snapToken, isFirstOrder: false, discount: 0 })
   }
+
+  // Cek order pertama
+  const orderCount = await prisma.order.count({ where: { userId: user.id } })
+  const isFirstOrder = orderCount === 1
+  const discount = isFirstOrder ? Math.floor(order.totalPrice * 0.2) : 0
+  const finalPrice = order.totalPrice - discount
 
   const parameter = {
     transaction_details: {
       order_id: order.id,
-      gross_amount: order.totalPrice,
+      gross_amount: finalPrice,
     },
     customer_details: {
       first_name: order.user.name,
       email: order.user.email,
       phone: order.user.phone ?? '',
     },
-    item_details: [{
-      id: order.shoeType.id,
-      price: order.shoeType.basePrice,
-      quantity: order.quantity,
-      name: order.shoeType.name,
-    }],
+    item_details: [
+      {
+        id: order.shoeType.id,
+        price: order.shoeType.basePrice,
+        quantity: order.quantity,
+        name: order.shoeType.name,
+      },
+      ...(discount > 0 ? [{
+        id: 'DISKON-FIRST',
+        price: -discount,
+        quantity: 1,
+        name: 'Diskon Pelanggan Baru 20%',
+      }] : []),
+    ],
   }
 
   const transaction = await snap.createTransaction(parameter)
 
-  // Upsert payment record + simpan transactionId
   await prisma.payment.upsert({
     where: { orderId: order.id },
-    update: {
-      snapToken: transaction.token,
-      status: 'PENDING',
-      transactionId: order.id, // ✅ fix
-    },
-    create: {
-      orderId: order.id,
-      snapToken: transaction.token,
-      amount: order.totalPrice,
-      status: 'PENDING',
-      transactionId: order.id, // ✅ fix
-    },
+    update: { snapToken: transaction.token, status: 'PENDING', amount: finalPrice, transactionId: order.id },
+    create: { orderId: order.id, snapToken: transaction.token, amount: finalPrice, status: 'PENDING', transactionId: order.id },
   })
 
-  return NextResponse.json({ snapToken: transaction.token })
+  return NextResponse.json({ snapToken: transaction.token, isFirstOrder, discount, finalPrice })
 }

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { getToken } from "@/lib/auth-client";
 
 type TrackingOrder = {
   id: string;
@@ -11,12 +12,8 @@ type TrackingOrder = {
 
 const steps = ["BOOKED", "PICKUP", "WASHING", "DRYING", "DELIVERY", "DONE"];
 const stepLabel: Record<string, string> = {
-  BOOKED: "Dipesan",
-  PICKUP: "Pickup",
-  WASHING: "Dicuci",
-  DRYING: "Dikeringkan",
-  DELIVERY: "Diantar",
-  DONE: "Selesai",
+  BOOKED: "Dipesan", PICKUP: "Pickup", WASHING: "Dicuci",
+  DRYING: "Dikeringkan", DELIVERY: "Diantar", DONE: "Selesai",
 };
 
 export default function TrackingPage() {
@@ -25,7 +22,9 @@ export default function TrackingPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/orders?withTracking=true")
+    fetch("/api/orders?withTracking=true", {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
       .then((r) => r.json())
       .then((data) => {
         const active = (data.orders ?? []).filter(
@@ -59,7 +58,6 @@ export default function TrackingPage() {
         </div>
       ) : (
         <div style={{ display: "flex", gap: 20 }}>
-          {/* List order */}
           <div style={{ width: 220, display: "flex", flexDirection: "column", gap: 8 }}>
             {orders.map((o) => (
               <button key={o.id} onClick={() => setSelected(o)} style={{
@@ -74,7 +72,6 @@ export default function TrackingPage() {
             ))}
           </div>
 
-          {/* Detail tracking */}
           {selected && (
             <div style={{
               flex: 1, background: "#fff", borderRadius: 12,
@@ -83,7 +80,6 @@ export default function TrackingPage() {
               <p style={{ fontWeight: 700, fontSize: 15, color: "#0f172a", marginBottom: 20 }}>
                 {selected.orderNumber} · {selected.shoeType.name}
               </p>
-
               <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
                 {steps.map((step, i) => {
                   const done = i <= currentStep;
@@ -117,6 +113,11 @@ export default function TrackingPage() {
                         }}>
                           {stepLabel[step]}
                         </p>
+                        {active && selected.tracking?.slice(-1)[0]?.note && (
+                          <p style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                            {selected.tracking.slice(-1)[0].note}
+                          </p>
+                        )}
                       </div>
                     </div>
                   );

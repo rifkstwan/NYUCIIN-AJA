@@ -67,6 +67,8 @@ export default function PesanPage() {
   const [shoeTypes, setShoeTypes] = useState<ShoeType[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isFirstOrder, setIsFirstOrder] = useState(false);
+  const [discount, setDiscount] = useState(0);
 
   const [form, setForm] = useState({
     shoeTypeId: "",
@@ -111,46 +113,48 @@ export default function PesanPage() {
     e.preventDefault();
     setError("");
 
-    if (!form.shoeTypeId) {
-      setError("Pilih jenis layanan terlebih dahulu.");
-      return;
-    }
-    if (!form.pickupAddress) {
-      setError("Alamat pickup wajib diisi.");
-      return;
-    }
+    if (!form.shoeTypeId) { setError("Pilih jenis layanan terlebih dahulu."); return; }
+    if (!form.pickupAddress) { setError("Alamat pickup wajib diisi."); return; }
 
     const token = getToken();
     if (!token) { router.push("/auth/login"); return; }
 
     setLoading(true);
     try {
+      // 1. Buat order
       const res = await fetch("/api/orders", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           shoeTypeId: form.shoeTypeId,
           quantity: form.quantity,
           notes: form.notes || undefined,
           pickupAddress: form.pickupAddress,
           deliveryAddress: form.deliveryAddress || undefined,
-          scheduledAt: form.scheduledAt
-            ? new Date(form.scheduledAt).toISOString()
-            : undefined,
+          scheduledAt: form.scheduledAt ? new Date(form.scheduledAt).toISOString() : undefined,
         }),
       });
+      const orderData = await res.json();
+      if (!res.ok) { setError(orderData.message || "Gagal membuat order."); return; }
 
-      const data = await res.json();
+      // 2. Buat transaksi Midtrans
+      const payRes = await fetch("/api/payments/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ orderId: orderData.id }),
+      });
+      const payData = await payRes.json();
+      if (!payRes.ok) { setError("Gagal membuat transaksi pembayaran."); return; }
 
-      if (!res.ok) {
-        setError(data.message || "Gagal membuat order, coba lagi.");
-        return;
-      }
+      // 3. Buka Snap popup
+      // @ts-ignore
+      window.snap.pay(payData.snapToken, {
+        onSuccess: () => router.push("/dashboard/riwayat"),
+        onPending: () => router.push("/dashboard/riwayat"),
+        onError: () => setError("Pembayaran gagal, silakan coba lagi."),
+        onClose: () => router.push("/dashboard/riwayat"),
+      });
 
-      router.push("/dashboard");
     } catch (err) {
       setError("Terjadi kesalahan. Periksa koneksi internet kamu.");
     } finally {
