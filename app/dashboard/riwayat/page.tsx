@@ -12,6 +12,7 @@ type Order = {
   quantity: number;
   createdAt: string;
   shoeType: { name: string };
+  payment?: { status: string } | null; // ← tambahan
 };
 
 const statusConfig: Record<string, { label: string; color: string }> = {
@@ -22,6 +23,13 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   DELIVERY:   { label: "Diantar",      color: "bg-cyan-100 text-cyan-700" },
   DONE:       { label: "Selesai",      color: "bg-green-100 text-green-700" },
   CANCELLED:  { label: "Dibatalkan",   color: "bg-red-100 text-red-700" },
+};
+
+// ← tambahan
+const paymentConfig: Record<string, { label: string; color: string }> = {
+  PENDING: { label: "Belum Dibayar", color: "bg-yellow-100 text-yellow-700" },
+  PAID:    { label: "Lunas",         color: "bg-green-100 text-green-700" },
+  FAILED:  { label: "Gagal",         color: "bg-red-100 text-red-700" },
 };
 
 export default function RiwayatPage() {
@@ -62,6 +70,10 @@ export default function RiwayatPage() {
         ) : (
           orders.map((order, i) => {
             const s = statusConfig[order.status] ?? { label: order.status, color: "bg-gray-100 text-gray-600" };
+            // ← tambahan: ambil badge payment
+            const p = order.payment
+              ? (paymentConfig[order.payment.status] ?? { label: order.payment.status, color: "bg-gray-100 text-gray-600" })
+              : null;
             return (
               <div
                 key={order.id}
@@ -92,10 +104,16 @@ export default function RiwayatPage() {
                     </div>
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ fontSize: 13.5, fontWeight: 600, color: "#0f172a" }}>
                     Rp {order.totalPrice?.toLocaleString("id-ID")}
                   </span>
+                  {/* ← badge payment */}
+                  {p && (
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${p.color}`}>
+                      {p.label}
+                    </span>
+                  )}
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${s.color}`}>
                     {s.label}
                   </span>
