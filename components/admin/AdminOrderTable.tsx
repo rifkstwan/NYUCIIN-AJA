@@ -1,6 +1,5 @@
 'use client'
-import { useState } from 'react'
-import { getToken } from '@/lib/auth-client'
+import Link from 'next/link'
 
 type Order = {
   id: string
@@ -14,105 +13,81 @@ type Order = {
   payment: { status: string } | null
 }
 
-const statusOptions = ['BOOKED', 'PICKUP', 'WASHING', 'DRYING', 'DELIVERY', 'DONE', 'CANCELLED']
-
 const statusColor: Record<string, string> = {
-  BOOKED: '#3b82f6', PICKUP: '#f59e0b', WASHING: '#8b5cf6',
-  DRYING: '#06b6d4', DELIVERY: '#f97316', DONE: '#16a34a', CANCELLED: '#ef4444',
+  BOOKED:    'bg-blue-100 text-blue-700',
+  PICKUP:    'bg-purple-100 text-purple-700',
+  WASHING:   'bg-orange-100 text-orange-700',
+  DRYING:    'bg-yellow-100 text-yellow-700',
+  DELIVERY:  'bg-cyan-100 text-cyan-700',
+  DONE:      'bg-green-100 text-green-700',
+  CANCELLED: 'bg-red-100 text-red-700',
 }
+
 const statusLabel: Record<string, string> = {
-  BOOKED: 'Dipesan', PICKUP: 'Pickup', WASHING: 'Dicuci',
-  DRYING: 'Dikeringkan', DELIVERY: 'Diantar', DONE: 'Selesai', CANCELLED: 'Dibatalkan',
+  BOOKED:    'Diterima',
+  PICKUP:    'Pickup',
+  WASHING:   'Dicuci',
+  DRYING:    'Dikeringkan',
+  DELIVERY:  'Dikirim',
+  DONE:      'Selesai',
+  CANCELLED: 'Dibatalkan',
 }
 
-export default function AdminOrderTable({ orders: initialOrders }: { orders: Order[] }) {
-  const [orders, setOrders] = useState(initialOrders)
-  const [updating, setUpdating] = useState<string | null>(null)
-
-  const updateStatus = async (orderId: string, status: string) => {
-    setUpdating(orderId)
-    try {
-      await fetch(`/api/admin/orders/${orderId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${getToken()}`,
-        },
-        body: JSON.stringify({ status }),
-      })
-      setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, status } : o))
-      )
-    } finally {
-      setUpdating(null)
-    }
-  }
-
+export default function AdminOrderTable({ orders }: { orders: Order[] }) {
   return (
-    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <table className="w-full border-collapse">
         <thead>
-          <tr style={{ background: '#f8fafc' }}>
-            {['No. Order', 'Pelanggan', 'Layanan', 'Total', 'Payment', 'Status', 'Tanggal'].map((h) => (
-              <th key={h} style={{
-                padding: '12px 16px', textAlign: 'left',
-                fontSize: 12, fontWeight: 600, color: '#64748b',
-                borderBottom: '1px solid #e2e8f0',
-              }}>{h}</th>
+          <tr className="bg-gray-50">
+            {['No. Order', 'Pelanggan', 'Layanan', 'Total', 'Payment', 'Status', 'Tanggal'].map(h => (
+              <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-400 border-b border-gray-100">
+                {h}
+              </th>
             ))}
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-gray-50">
           {orders.length === 0 ? (
             <tr>
-              <td colSpan={7} style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
+              <td colSpan={7} className="py-16 text-center text-gray-400 text-sm">
                 Belum ada order
               </td>
             </tr>
-          ) : orders.map((o, i) => (
-            <tr key={o.id} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
-              <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#16a34a' }}>
-                {o.orderNumber}
+          ) : orders.map(o => (
+            <tr key={o.id} className="hover:bg-gray-50 transition">
+              <td className="px-5 py-4">
+                <Link
+                  href={`/admin/orders/${o.id}`}
+                  className="text-sm font-semibold text-primary-600 hover:underline"
+                >
+                  {o.orderNumber}
+                </Link>
               </td>
-              <td style={{ padding: '12px 16px' }}>
-                <p style={{ fontSize: 13, fontWeight: 500, color: '#0f172a' }}>{o.user.name}</p>
-                <p style={{ fontSize: 12, color: '#94a3b8' }}>{o.user.email}</p>
+              <td className="px-5 py-4">
+                <div className="text-sm font-medium text-gray-900">{o.user.name}</div>
+                <div className="text-xs text-gray-400">{o.user.email}</div>
               </td>
-              <td style={{ padding: '12px 16px', fontSize: 13, color: '#475569' }}>
+              <td className="px-5 py-4 text-sm text-gray-600">
                 {o.shoeType.name} · {o.quantity} pasang
               </td>
-              <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
+              <td className="px-5 py-4 text-sm font-semibold text-gray-900">
                 Rp {o.totalPrice.toLocaleString('id-ID')}
               </td>
-              <td style={{ padding: '12px 16px' }}>
-                <span style={{
-                  fontSize: 12, fontWeight: 600, padding: '3px 8px', borderRadius: 20,
-                  background: o.payment?.status === 'PAID' ? '#dcfce7' : '#fef9c3',
-                  color: o.payment?.status === 'PAID' ? '#16a34a' : '#a16207',
-                }}>
-                  {o.payment?.status ?? 'BELUM BAYAR'}
+              <td className="px-5 py-4">
+                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                  o.payment?.status === 'PAID'
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-yellow-100 text-yellow-700'
+                }`}>
+                  {o.payment?.status === 'PAID' ? 'Lunas' : 'Belum Bayar'}
                 </span>
               </td>
-              <td style={{ padding: '12px 16px' }}>
-                <select
-                  value={o.status}
-                  disabled={updating === o.id}
-                  onChange={(e) => updateStatus(o.id, e.target.value)}
-                  style={{
-                    padding: '5px 8px', borderRadius: 8,
-                    border: `1.5px solid ${statusColor[o.status]}`,
-                    color: statusColor[o.status],
-                    fontSize: 12, fontWeight: 600,
-                    background: statusColor[o.status] + '15',
-                    cursor: 'pointer', outline: 'none',
-                  }}
-                >
-                  {statusOptions.map((s) => (
-                    <option key={s} value={s}>{statusLabel[s]}</option>
-                  ))}
-                </select>
+              <td className="px-5 py-4">
+                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusColor[o.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                  {statusLabel[o.status] ?? o.status}
+                </span>
               </td>
-              <td style={{ padding: '12px 16px', fontSize: 12, color: '#94a3b8' }}>
+              <td className="px-5 py-4 text-xs text-gray-400">
                 {new Date(o.createdAt).toLocaleDateString('id-ID', {
                   day: 'numeric', month: 'short', year: 'numeric',
                 })}

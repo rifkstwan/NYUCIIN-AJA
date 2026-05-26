@@ -6,7 +6,7 @@ import { getToken, getUser, logout } from '@/lib/auth-client'
 
 const navItems = [
   {
-    href: '/admin',
+    href: '/admin/dashboard', // ← diubah dari '/admin'
     label: 'Dashboard',
     icon: (
       <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -33,7 +33,7 @@ const navItems = [
     ),
   },
   {
-    href: '/admin/dashboard',
+    href: '/admin/revenue', // ← diubah dari '/admin/dashboard'
     label: 'Revenue & Statistik',
     icon: (
       <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -69,7 +69,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: '#f8fafc', fontFamily: 'var(--font-body)' }}>
-      {/* Sidebar — sama persis dengan dashboard user */}
       <aside style={{
         width: 240, flexShrink: 0,
         background: '#fff',
@@ -78,7 +77,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         padding: '24px 16px',
         position: 'sticky', top: 0, height: '100vh',
       }}>
-        {/* Logo */}
         <Link href="/" style={{
           fontFamily: 'var(--font-display)',
           fontWeight: 800, fontSize: 20,
@@ -92,10 +90,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           Admin Panel
         </p>
 
-        {/* Nav */}
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
           {navItems.map((item) => {
-            const active = pathname === item.href
+            const active = pathname === item.href || pathname.startsWith(item.href + '/') || pathname.startsWith(item.href + '/')
             return (
               <Link key={item.href} href={item.href} style={{
                 display: 'flex', alignItems: 'center', gap: 10,
@@ -112,13 +109,11 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           })}
         </nav>
 
-        {/* User info */}
         <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 16, marginBottom: 8 }}>
           <p style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', paddingLeft: 12 }}>{user?.name ?? 'Admin'}</p>
           <p style={{ fontSize: 11, color: '#94a3b8', paddingLeft: 12, marginTop: 2 }}>{user?.email}</p>
         </div>
 
-        {/* Logout */}
         <button onClick={handleLogout} style={{
           display: 'flex', alignItems: 'center', gap: 10,
           padding: '9px 12px', borderRadius: 8,
@@ -134,7 +129,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </button>
       </aside>
 
-      {/* Main */}
       <main style={{ flex: 1, padding: 32, overflowY: 'auto' }}>
         {children}
       </main>

@@ -11,7 +11,6 @@ datasource db {
   provider = "postgresql"
 }
 
-
 // ==================== ENUMS ====================
 
 enum Role {
@@ -190,4 +189,18 @@ model PickupSchedule {
   order Order @relation(fields: [orderId], references: [id])
 
   @@map("pickup_schedule")
+}
+
+model Promo {
+  id          String    @id @default(uuid())
+  title       String    @db.VarChar(150)
+  description String?   @db.Text
+  badge       String?   @db.VarChar(50) // contoh: "PROMO", "BARU", "TERBATAS"
+  isActive    Boolean   @default(true)
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("promos")
 }
