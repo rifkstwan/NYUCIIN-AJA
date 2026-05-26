@@ -165,10 +165,10 @@ export default function PaymentPage() {
         className="w-full bg-green-600 text-white py-3 rounded-lg font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:bg-green-700"
       >
         {loading
-          ? '⏳ Memproses...'
+          ? 'Memproses...'
           : !snapReady
-          ? '⌛ Memuat Midtrans...'
-          : '💳 Bayar Sekarang'}
+          ? 'Memuat Midtrans...'
+          : 'Bayar Sekarang'}
       </button>
 
       <p className="text-xs text-gray-400 text-center mt-3">
