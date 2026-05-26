@@ -62,11 +62,14 @@ model User {
 }
 
 model ShoeType {
-  id          String  @id @default(uuid())
-  name        String  @db.VarChar(100) // "Sneakers", "Boots", "Heels"
-  basePrice   Int // dalam rupiah, misal 25000
-  description String? @db.Text
-  isActive    Boolean @default(true)
+  id          String   @id @default(uuid())
+  name        String   @db.VarChar(100)
+  basePrice   Int
+  description String?  @db.Text
+  badge       String?  @db.VarChar(50)
+  featured    Boolean  @default(false)
+  features    String[] @default([])
+  isActive    Boolean  @default(true)
 
   orders Order[]
 
