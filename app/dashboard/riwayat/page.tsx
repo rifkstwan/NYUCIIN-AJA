@@ -12,7 +12,7 @@ type Order = {
   quantity: number;
   createdAt: string;
   shoeType: { name: string };
-  payment?: { status: string } | null; // ← tambahan
+  payment?: { status: string } | null;
 };
 
 const statusConfig: Record<string, { label: string; color: string }> = {
@@ -25,7 +25,6 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   CANCELLED:  { label: "Dibatalkan",   color: "bg-red-100 text-red-700" },
 };
 
-// ← tambahan
 const paymentConfig: Record<string, { label: string; color: string }> = {
   PENDING: { label: "Belum Dibayar", color: "bg-yellow-100 text-yellow-700" },
   PAID:    { label: "Lunas",         color: "bg-green-100 text-green-700" },
@@ -70,54 +69,79 @@ export default function RiwayatPage() {
         ) : (
           orders.map((order, i) => {
             const s = statusConfig[order.status] ?? { label: order.status, color: "bg-gray-100 text-gray-600" };
-            // ← tambahan: ambil badge payment
             const p = order.payment
               ? (paymentConfig[order.payment.status] ?? { label: order.payment.status, color: "bg-gray-100 text-gray-600" })
               : null;
+            const isPending = order.payment?.status === "PENDING";
             return (
               <div
                 key={order.id}
-                onClick={() => router.push(`/dashboard/tracking?order=${order.id}`)}
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "16px 24px", cursor: "pointer",
-                  borderTop: i === 0 ? "none" : "1px solid #f1f5f9",
-                  transition: "background 0.15s",
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = "#f8fafc"}
-                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                style={{ borderTop: i === 0 ? "none" : "1px solid #f1f5f9" }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                  <div style={{
-                    background: "#dcfce7", padding: 10, borderRadius: 10,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    <Package style={{ width: 16, height: 16, color: "#16a34a" }} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: "#0f172a" }}>{order.orderNumber}</div>
-                    <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
-                      {order.shoeType?.name} × {order.quantity}
+                <div
+                  onClick={() => router.push(`/dashboard/tracking?order=${order.id}`)}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: isPending ? "16px 24px 8px" : "16px 24px",
+                    cursor: "pointer",
+                    transition: "background 0.15s",
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#f8fafc"}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    <div style={{
+                      background: "#dcfce7", padding: 10, borderRadius: 10,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      <Package style={{ width: 16, height: 16, color: "#16a34a" }} />
                     </div>
-                    <div style={{ fontSize: 11, color: "#cbd5e1", marginTop: 1 }}>
-                      {new Date(order.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                    <div>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: "#0f172a" }}>{order.orderNumber}</div>
+                      <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
+                        {order.shoeType?.name} × {order.quantity}
+                      </div>
+                      <div style={{ fontSize: 11, color: "#cbd5e1", marginTop: 1 }}>
+                        {new Date(order.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 13.5, fontWeight: 600, color: "#0f172a" }}>
-                    Rp {order.totalPrice?.toLocaleString("id-ID")}
-                  </span>
-                  {/* ← badge payment */}
-                  {p && (
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${p.color}`}>
-                      {p.label}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 13.5, fontWeight: 600, color: "#0f172a" }}>
+                      Rp {order.totalPrice?.toLocaleString("id-ID")}
                     </span>
-                  )}
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${s.color}`}>
-                    {s.label}
-                  </span>
+                    {p && (
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${p.color}`}>
+                        {p.label}
+                      </span>
+                    )}
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${s.color}`}>
+                      {s.label}
+                    </span>
+                  </div>
                 </div>
+
+                {isPending && (
+                  <div style={{ padding: "0 24px 16px", display: "flex", justifyContent: "flex-end" }}>
+                    <button
+                      onClick={e => {
+                        e.stopPropagation();
+                        router.push(`/dashboard/orders/${order.id}/payment`);
+                      }}
+                      style={{
+                        background: "#16a34a", color: "#fff",
+                        border: "none", borderRadius: 8,
+                        padding: "8px 20px", fontSize: 13,
+                        fontWeight: 600, cursor: "pointer",
+                        transition: "background 0.15s",
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = "#15803d")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "#16a34a")}
+                    >
+                      💳 Bayar Sekarang
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })
