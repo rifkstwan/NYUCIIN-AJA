@@ -1,33 +1,21 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getToken, getUser } from "@/lib/auth-client";
 import {
   Package, Users, CheckCircle, Clock, TrendingUp,
   Plus, Pencil, Trash2, Loader2, X,
+  Bell, Eye, EyeOff, Download, Star,
 } from "lucide-react";
 
-interface Stats {
-  totalOrders: number;
-  activeOrders: number;
-  completedOrders: number;
-  totalUsers: number;
-  totalRevenue: number;
-}
-interface RecentOrder {
-  id: string; orderNumber: string; status: string;
-  totalPrice: number; user: { name: string }; shoeType: { name: string };
-}
-interface Promo {
-  id: string; title: string; description?: string;
-  badge?: string; isActive: boolean; startDate?: string; endDate?: string;
-}
-interface Service {
-  id: string; name: string; description?: string;
-  basePrice: number; badge?: string; featured: boolean;
-  features: string[]; isActive: boolean;
-}
+// ── Types ──
+interface Stats { totalOrders: number; activeOrders: number; completedOrders: number; totalUsers: number; totalRevenue: number }
+interface RecentOrder { id: string; orderNumber: string; status: string; totalPrice: number; user: { name: string }; shoeType: { name: string } }
+interface Promo { id: string; title: string; description?: string; badge?: string; isActive: boolean; startDate?: string; endDate?: string }
+interface Service { id: string; name: string; description?: string; basePrice: number; badge?: string; featured: boolean; features: string[]; isActive: boolean }
+interface Testimonial { id: string; rating: number; comment?: string; isVisible: boolean; createdAt: string; user: { name: string }; order: { shoeType: { name: string } } }
+interface Notif { id: string; title: string; body: string; type: string; isRead: boolean; orderId?: string; createdAt: string }
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   BOOKED:    { label: "Diterima",    color: "bg-blue-100 text-blue-700" },
@@ -44,11 +32,17 @@ const emptyService = { name: "", description: "", basePrice: "", badge: "", feat
 
 export default function AdminDashboardPage() {
   const router = useRouter();
+
   const [stats,        setStats]        = useState<Stats | null>(null);
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [promos,       setPromos]       = useState<Promo[]>([]);
   const [services,     setServices]     = useState<Service[]>([]);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [notifs,       setNotifs]       = useState<Notif[]>([]);
+  const [unread,       setUnread]       = useState(0);
   const [loading,      setLoading]      = useState(true);
+  const [showNotifs,   setShowNotifs]   = useState(false);
+  const [exporting,    setExporting]    = useState<string | null>(null);
 
   // promo modal
   const [showPromoModal,  setShowPromoModal]  = useState(false);
@@ -66,111 +60,130 @@ export default function AdminDashboardPage() {
   const [serviceDeletingId, setServiceDeletingId] = useState<string | null>(null);
   const [serviceMsg,        setServiceMsg]        = useState("");
 
+  // testimoni
+  const [testDeletingId, setTestDeletingId] = useState<string | null>(null);
+
   useEffect(() => {
     const token = getToken();
     const user  = getUser();
     if (!token || user?.role !== "ADMIN") { router.push("/auth/login"); return; }
     fetchData(token);
+    // poll notifikasi tiap 30 detik
+    const interval = setInterval(() => fetchNotifs(token), 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchNotifs = useCallback(async (token: string) => {
+    const res = await fetch("/api/admin/notifications", { headers: { Authorization: `Bearer ${token}` } });
+    if (res.ok) { const d = await res.json(); setNotifs(d.notifications); setUnread(d.unreadCount); }
   }, []);
 
   const fetchData = async (token: string) => {
     try {
       const h = { Authorization: `Bearer ${token}` };
-      const [sRes, oRes, pRes, svRes] = await Promise.all([
+      const [sRes, oRes, pRes, svRes, tRes, nRes] = await Promise.all([
         fetch("/api/admin/stats",          { headers: h }),
         fetch("/api/admin/orders?limit=5", { headers: h }),
         fetch("/api/admin/promos",         { headers: h }),
         fetch("/api/admin/services",       { headers: h }),
+        fetch("/api/admin/testimonials",   { headers: h }),
+        fetch("/api/admin/notifications",  { headers: h }),
       ]);
       if (sRes.ok)  setStats(await sRes.json());
       if (oRes.ok)  { const o = await oRes.json(); setRecentOrders(o.orders ?? o); }
       if (pRes.ok)  { const p = await pRes.json(); setPromos(p.promos ?? []); }
       if (svRes.ok) { const sv = await svRes.json(); setServices(sv.services ?? []); }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
+      if (tRes.ok)  { const t = await tRes.json(); setTestimonials(t.reviews ?? []); }
+      if (nRes.ok)  { const n = await nRes.json(); setNotifs(n.notifications); setUnread(n.unreadCount); }
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
+  };
+
+  // ── NOTIF helpers ──
+  const openNotifs = async () => {
+    setShowNotifs(true);
+    if (unread > 0) {
+      const token = getToken();
+      await fetch("/api/admin/notifications", { method: "PATCH", headers: { Authorization: `Bearer ${token}` } });
+      setUnread(0);
+      setNotifs(prev => prev.map(n => ({ ...n, isRead: true })));
     }
   };
 
-  // ── PROMO helpers ──
-  const openCreatePromo = () => {
-    setEditPromo(null);
-    setPromoForm({ ...emptyPromo });
-    setPromoMsg("");
-    setShowPromoModal(true);
+  // ── EXPORT helpers ──
+  const handleExport = async (type: string) => {
+    setExporting(type);
+    const token = getToken();
+    const res   = await fetch(`/api/admin/export?type=${type}`, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.ok) {
+      const blob     = await res.blob();
+      const url      = URL.createObjectURL(blob);
+      const a        = document.createElement('a');
+      a.href         = url;
+      a.download     = `${type}-${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    setExporting(null);
   };
-  const openEditPromo = (p: Promo) => {
-    setEditPromo(p);
-    setPromoForm({
-      title:       p.title,
-      description: p.description  ?? "",
-      badge:       p.badge        ?? "",
-      isActive:    p.isActive,
-      startDate:   p.startDate?.slice(0, 10) ?? "",
-      endDate:     p.endDate?.slice(0, 10)   ?? "",
+
+  // ── TESTIMONI helpers ──
+  const toggleTestimonial = async (t: Testimonial) => {
+    const token = getToken();
+    const res   = await fetch(`/api/admin/testimonials/${t.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ isVisible: !t.isVisible }),
     });
-    setPromoMsg("");
-    setShowPromoModal(true);
+    if (res.ok) setTestimonials(prev => prev.map(x => x.id === t.id ? { ...x, isVisible: !x.isVisible } : x));
+  };
+  const handleDeleteTest = async (id: string) => {
+    if (!confirm("Hapus testimoni ini?")) return;
+    setTestDeletingId(id);
+    const token = getToken();
+    await fetch(`/api/admin/testimonials/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    setTestimonials(prev => prev.filter(x => x.id !== id));
+    setTestDeletingId(null);
+  };
+
+  // ── PROMO helpers ──
+  const openCreatePromo = () => { setEditPromo(null); setPromoForm({ ...emptyPromo }); setPromoMsg(""); setShowPromoModal(true); };
+  const openEditPromo   = (p: Promo) => {
+    setEditPromo(p);
+    setPromoForm({ title: p.title, description: p.description ?? "", badge: p.badge ?? "", isActive: p.isActive, startDate: p.startDate?.slice(0,10) ?? "", endDate: p.endDate?.slice(0,10) ?? "" });
+    setPromoMsg(""); setShowPromoModal(true);
   };
   const handleSavePromo = async () => {
     if (!promoForm.title.trim()) { setPromoMsg("Judul promo wajib diisi"); return; }
     setPromoSaving(true); setPromoMsg("");
     try {
-      const token  = getToken();
-      const url    = editPromo ? `/api/admin/promos/${editPromo.id}` : "/api/admin/promos";
-      const method = editPromo ? "PATCH" : "POST";
-      const res    = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ ...promoForm, startDate: promoForm.startDate || null, endDate: promoForm.endDate || null }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setPromos(prev => editPromo ? prev.map(p => p.id === editPromo.id ? data : p) : [data, ...prev]);
-        setShowPromoModal(false);
-      } else setPromoMsg(data.error ?? "Gagal menyimpan");
+      const token = getToken();
+      const url   = editPromo ? `/api/admin/promos/${editPromo.id}` : "/api/admin/promos";
+      const res   = await fetch(url, { method: editPromo ? "PATCH" : "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ ...promoForm, startDate: promoForm.startDate || null, endDate: promoForm.endDate || null }) });
+      const data  = await res.json();
+      if (res.ok) { setPromos(prev => editPromo ? prev.map(p => p.id === editPromo.id ? data : p) : [data, ...prev]); setShowPromoModal(false); }
+      else setPromoMsg(data.error ?? "Gagal menyimpan");
     } catch { setPromoMsg("Gagal menyimpan"); }
     finally { setPromoSaving(false); }
   };
   const handleDeletePromo = async (id: string) => {
     if (!confirm("Hapus promo ini?")) return;
     setPromoDeletingId(id);
-    const token = getToken();
-    await fetch(`/api/admin/promos/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    await fetch(`/api/admin/promos/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${getToken()}` } });
     setPromos(prev => prev.filter(p => p.id !== id));
     setPromoDeletingId(null);
   };
   const togglePromo = async (p: Promo) => {
-    const token = getToken();
-    const res   = await fetch(`/api/admin/promos/${p.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ isActive: !p.isActive }),
-    });
+    const res = await fetch(`/api/admin/promos/${p.id}`, { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` }, body: JSON.stringify({ isActive: !p.isActive }) });
     if (res.ok) setPromos(prev => prev.map(x => x.id === p.id ? { ...x, isActive: !x.isActive } : x));
   };
 
   // ── SERVICE helpers ──
-  const openCreateService = () => {
-    setEditService(null);
-    setServiceForm({ ...emptyService });
-    setServiceMsg("");
-    setShowServiceModal(true);
-  };
-  const openEditService = (s: Service) => {
+  const openCreateService = () => { setEditService(null); setServiceForm({ ...emptyService }); setServiceMsg(""); setShowServiceModal(true); };
+  const openEditService   = (s: Service) => {
     setEditService(s);
-    setServiceForm({
-      name:        s.name,
-      description: s.description  ?? "",
-      basePrice:   String(s.basePrice),
-      badge:       s.badge        ?? "",
-      featured:    s.featured     ?? false,
-      features:    (s.features    ?? []).join("\n"),
-      isActive:    s.isActive     ?? true,
-    });
-    setServiceMsg("");
-    setShowServiceModal(true);
+    setServiceForm({ name: s.name, description: s.description ?? "", basePrice: String(s.basePrice), badge: s.badge ?? "", featured: s.featured ?? false, features: (s.features ?? []).join("\n"), isActive: s.isActive ?? true });
+    setServiceMsg(""); setShowServiceModal(true);
   };
   const handleSaveService = async () => {
     if (!serviceForm.name.trim() || !serviceForm.basePrice) { setServiceMsg("Nama dan harga wajib diisi"); return; }
@@ -178,36 +191,23 @@ export default function AdminDashboardPage() {
     try {
       const token    = getToken();
       const url      = editService ? `/api/admin/services/${editService.id}` : "/api/admin/services";
-      const method   = editService ? "PATCH" : "POST";
       const features = serviceForm.features.split("\n").map(f => f.trim()).filter(Boolean);
-      const res      = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ ...serviceForm, basePrice: Number(serviceForm.basePrice), features }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setServices(prev => editService ? prev.map(s => s.id === editService.id ? data : s) : [data, ...prev]);
-        setShowServiceModal(false);
-      } else setServiceMsg(data.error ?? "Gagal menyimpan");
+      const res      = await fetch(url, { method: editService ? "PATCH" : "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ ...serviceForm, basePrice: Number(serviceForm.basePrice), features }) });
+      const data     = await res.json();
+      if (res.ok) { setServices(prev => editService ? prev.map(s => s.id === editService.id ? data : s) : [data, ...prev]); setShowServiceModal(false); }
+      else setServiceMsg(data.error ?? "Gagal menyimpan");
     } catch { setServiceMsg("Gagal menyimpan"); }
     finally { setServiceSaving(false); }
   };
   const handleDeleteService = async (id: string) => {
-    if (!confirm("Hapus layanan ini? Order yang ada tetap aman.")) return;
+    if (!confirm("Hapus layanan ini?")) return;
     setServiceDeletingId(id);
-    const token = getToken();
-    await fetch(`/api/admin/services/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    await fetch(`/api/admin/services/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${getToken()}` } });
     setServices(prev => prev.filter(s => s.id !== id));
     setServiceDeletingId(null);
   };
   const toggleService = async (s: Service) => {
-    const token = getToken();
-    const res   = await fetch(`/api/admin/services/${s.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ isActive: !s.isActive }),
-    });
+    const res = await fetch(`/api/admin/services/${s.id}`, { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` }, body: JSON.stringify({ isActive: !s.isActive }) });
     if (res.ok) setServices(prev => prev.map(x => x.id === s.id ? { ...x, isActive: !x.isActive } : x));
   };
 
@@ -220,9 +220,65 @@ export default function AdminDashboardPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-primary-900">Admin Dashboard</h1>
-        <p className="text-gray-400 text-sm">Ringkasan bisnis NyuciinAja</p>
+      {/* Header + Notif + Export */}
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-primary-900">Admin Dashboard</h1>
+          <p className="text-gray-400 text-sm">Ringkasan bisnis NyuciinAja</p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Export */}
+          <div className="relative group">
+            <button className="flex items-center gap-1.5 border border-gray-200 text-gray-600 px-3 py-2 rounded-xl text-xs font-semibold hover:bg-gray-50 transition">
+              <Download className="w-3.5 h-3.5" /> Export
+            </button>
+            <div className="absolute right-0 top-full mt-1 bg-white border border-gray-100 rounded-xl shadow-lg z-20 hidden group-hover:block w-40">
+              <button onClick={() => handleExport('orders')} disabled={exporting === 'orders'} className="w-full text-left px-4 py-2.5 text-xs hover:bg-gray-50 transition flex items-center gap-2 disabled:opacity-50">
+                {exporting === 'orders' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Package className="w-3.5 h-3.5" />} Data Order (CSV)
+              </button>
+              <button onClick={() => handleExport('revenue')} disabled={exporting === 'revenue'} className="w-full text-left px-4 py-2.5 text-xs hover:bg-gray-50 transition flex items-center gap-2 disabled:opacity-50">
+                {exporting === 'revenue' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <TrendingUp className="w-3.5 h-3.5" />} Data Revenue (CSV)
+              </button>
+            </div>
+          </div>
+
+          {/* Notifikasi */}
+          <div className="relative">
+            <button onClick={openNotifs} className="relative p-2 rounded-xl border border-gray-200 hover:bg-gray-50 transition text-gray-600">
+              <Bell className="w-4.5 h-4.5 w-5 h-5" />
+              {unread > 0 && (
+                <span className="absolute -top-1 -right-1 w-4.5 h-4.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {unread > 9 ? '9+' : unread}
+                </span>
+              )}
+            </button>
+
+            {showNotifs && (
+              <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-100 rounded-2xl shadow-xl z-30">
+                <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                  <span className="font-bold text-sm text-primary-900">Notifikasi</span>
+                  <button onClick={() => setShowNotifs(false)} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+                </div>
+                <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
+                  {notifs.length === 0 ? (
+                    <div className="py-8 text-center text-gray-400 text-sm">Belum ada notifikasi</div>
+                  ) : notifs.map(n => (
+                    <div key={n.id} className={`px-4 py-3 ${!n.isRead ? "bg-primary-50" : ""}`}>
+                      <div className="flex items-start gap-2">
+                        <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${!n.isRead ? "bg-primary-500" : "bg-gray-300"}`} />
+                        <div>
+                          <p className="text-xs font-semibold text-gray-800">{n.title}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>
+                          <p className="text-[11px] text-gray-400 mt-1">{new Date(n.createdAt).toLocaleString('id-ID')}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Stats */}
@@ -232,7 +288,7 @@ export default function AdminDashboardPage() {
           { label: "Aktif",       value: stats?.activeOrders    ?? 0, icon: <Clock className="w-5 h-5" />,       color: "text-orange-500",  bg: "bg-orange-50" },
           { label: "Selesai",     value: stats?.completedOrders ?? 0, icon: <CheckCircle className="w-5 h-5" />, color: "text-green-500",   bg: "bg-green-50" },
           { label: "Total User",  value: stats?.totalUsers      ?? 0, icon: <Users className="w-5 h-5" />,       color: "text-blue-500",    bg: "bg-blue-50" },
-          { label: "Revenue",     value: `Rp ${((stats?.totalRevenue ?? 0) / 1000).toFixed(0)}k`, icon: <TrendingUp className="w-5 h-5" />, color: "text-purple-500", bg: "bg-purple-50" },
+          { label: "Revenue",     value: `Rp ${((stats?.totalRevenue ?? 0)/1000).toFixed(0)}k`, icon: <TrendingUp className="w-5 h-5" />, color: "text-purple-500", bg: "bg-purple-50" },
         ].map((s, i) => (
           <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${s.bg} ${s.color}`}>{s.icon}</div>
@@ -275,9 +331,7 @@ export default function AdminDashboardPage() {
                   <button onClick={() => togglePromo(p)} className={`px-2 py-1 rounded-lg text-xs font-medium transition ${p.isActive ? "bg-gray-100 text-gray-500 hover:bg-gray-200" : "bg-green-50 text-green-600 hover:bg-green-100"}`}>
                     {p.isActive ? "Nonaktifkan" : "Aktifkan"}
                   </button>
-                  <button onClick={() => openEditPromo(p)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-primary-600 transition">
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
+                  <button onClick={() => openEditPromo(p)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-primary-600 transition"><Pencil className="w-3.5 h-3.5" /></button>
                   <button onClick={() => handleDeletePromo(p.id)} disabled={promoDeletingId === p.id} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition disabled:opacity-50">
                     {promoDeletingId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                   </button>
@@ -318,9 +372,7 @@ export default function AdminDashboardPage() {
                   <button onClick={() => toggleService(s)} className={`px-2 py-1 rounded-lg text-xs font-medium transition ${s.isActive ? "bg-gray-100 text-gray-500 hover:bg-gray-200" : "bg-green-50 text-green-600 hover:bg-green-100"}`}>
                     {s.isActive ? "Nonaktifkan" : "Aktifkan"}
                   </button>
-                  <button onClick={() => openEditService(s)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-primary-600 transition">
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
+                  <button onClick={() => openEditService(s)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-primary-600 transition"><Pencil className="w-3.5 h-3.5" /></button>
                   <button onClick={() => handleDeleteService(s.id)} disabled={serviceDeletingId === s.id} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition disabled:opacity-50">
                     {serviceDeletingId === s.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                   </button>
@@ -329,10 +381,54 @@ export default function AdminDashboardPage() {
             ))}
           </div>
         </div>
-
       </div>
 
-      {/* Row 2 — Order Terbaru */}
+      {/* Row 2 — Testimoni */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-5">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h2 className="font-bold text-primary-900">Kelola Testimoni</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Review ≥4 bintang yang diaktifkan tampil di landing page</p>
+          </div>
+          <span className="text-xs text-gray-400">{testimonials.filter(t => t.isVisible).length} aktif / {testimonials.length} total</span>
+        </div>
+        <div className="divide-y divide-gray-50">
+          {testimonials.length === 0 ? (
+            <div className="py-10 text-center text-gray-300 text-sm">Belum ada testimoni</div>
+          ) : testimonials.slice(0, 8).map(t => (
+            <div key={t.id} className={`flex items-center justify-between px-6 py-3.5 ${!t.isVisible ? "opacity-50" : ""}`}>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-green-50 text-green-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                  {(t.user.name ?? "P").slice(0,2).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-800">{t.user.name}</span>
+                    <div className="flex gap-0.5">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className={`w-3 h-3 ${i < t.rating ? "fill-amber-400 text-amber-400" : "text-gray-200"}`} />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-400 truncate max-w-xs mt-0.5">
+                    {t.order.shoeType.name} — {t.comment ? `"${t.comment.slice(0,60)}${t.comment.length > 60 ? '…' : ''}"` : "Tanpa komentar"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0 ml-3">
+                <button onClick={() => toggleTestimonial(t)} className={`p-1.5 rounded-lg transition ${t.isVisible ? "hover:bg-gray-100 text-gray-400 hover:text-gray-600" : "hover:bg-green-50 text-gray-300 hover:text-green-600"}`} title={t.isVisible ? "Sembunyikan" : "Tampilkan"}>
+                  {t.isVisible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                </button>
+                <button onClick={() => handleDeleteTest(t.id)} disabled={testDeletingId === t.id} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition disabled:opacity-50">
+                  {testDeletingId === t.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Row 3 — Order Terbaru */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-5">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="font-bold text-primary-900">Order Terbaru</h2>
@@ -462,6 +558,9 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Overlay tutup notif */}
+      {showNotifs && <div className="fixed inset-0 z-20" onClick={() => setShowNotifs(false)} />}
     </div>
   );
 }

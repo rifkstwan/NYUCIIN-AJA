@@ -76,6 +76,18 @@ model ShoeType {
   @@map("shoe_types")
 }
 
+model Notification {
+  id        String   @id @default(uuid())
+  title     String   @db.VarChar(150)
+  body      String   @db.Text
+  type      String   @db.VarChar(50) // "NEW_ORDER" | "STATUS_CHANGE" | "REVIEW"
+  isRead    Boolean  @default(false)
+  orderId   String?
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
+
 model Order {
   id              String      @id @default(uuid())
   orderNumber     String      @unique @db.VarChar(20) // ORD-20260521-001
