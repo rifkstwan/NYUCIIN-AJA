@@ -1,12 +1,37 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
+// ── Types ──────────────────────────────────────────────
+interface Promo {
+  id: string;
+  title: string;
+  description?: string;
+  badge?: string;
+  isActive: boolean;
+}
+
+// ── Fetch promo pertama yang aktif ────────────────────
+async function getFirstPromo(): Promise<Promo | null> {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+    const res = await fetch(`${baseUrl}/api/promos`, { next: { revalidate: 60 } });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const list: Promo[] = (data.promos ?? data).filter((p: Promo) => p.isActive);
+    return list[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// ── Static data ────────────────────────────────────────
 const trackSteps = [
-  { label: "Booking", done: true },
-  { label: "Jemput", done: true },
-  { label: "Cuci", active: true },
-  { label: "Kering", done: false },
-  { label: "Antar", done: false },
-  { label: "Selesai", done: false },
+  { label: "Booking",  done: true  },
+  { label: "Jemput",   done: true  },
+  { label: "Cuci",     active: true },
+  { label: "Kering",   done: false },
+  { label: "Antar",    done: false },
+  { label: "Selesai",  done: false },
 ];
 
 const featureList = [
@@ -71,13 +96,22 @@ const trustItems = [
   },
 ];
 
-export default function Hero() {
+// ── Component ──────────────────────────────────────────
+export default async function Hero() {
+  const promo = await getFirstPromo();
+
+  // Fallback kalau API belum ada promo
+  const promoBanner = promo ?? {
+    title: "Diskon 20%",
+    description: "untuk pesanan pertama kamu",
+    badge: "Penawaran Pertama",
+  };
+
   return (
     <section className="max-w-6xl mx-auto px-8 py-20 grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
 
       {/* ── LEFT ── */}
       <div>
-        {/* Badge */}
         <div style={{
           display: "inline-flex", alignItems: "center", gap: 8,
           background: "#dcfce7", color: "#14532d",
@@ -92,21 +126,16 @@ export default function Hero() {
           Dipercaya 1.200+ pelanggan di Semarang
         </div>
 
-        {/* Headline */}
         <h1 style={{
           fontFamily: "var(--font-display)",
           fontSize: "clamp(40px, 5vw, 54px)",
-          fontWeight: 800,
-          lineHeight: 1.07,
-          letterSpacing: "-1.8px",
-          color: "#0f172a",
-          marginBottom: 20,
+          fontWeight: 800, lineHeight: 1.07,
+          letterSpacing: "-1.8px", color: "#0f172a", marginBottom: 20,
         }}>
           Sepatu Bersih,<br />
           <em style={{ color: "#16a34a", fontStyle: "normal" }}>Tanpa Ribet</em>
         </h1>
 
-        {/* Desc */}
         <p style={{
           fontSize: 16.5, lineHeight: 1.72,
           color: "#475569", marginBottom: 34,
@@ -116,7 +145,6 @@ export default function Hero() {
           dan antar langsung ke pintumu, selesai dalam 24 jam.
         </p>
 
-        {/* Buttons */}
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 40 }}>
           <Link
             href="/auth/register"
@@ -130,7 +158,7 @@ export default function Hero() {
             Mulai Sekarang
           </Link>
           <a
-            href="#how-it-works"
+            href="#layanan"
             style={{
               padding: "13px 24px", borderRadius: 10, fontSize: 14.5, fontWeight: 600,
               background: "#fff", color: "#0f172a",
@@ -143,7 +171,6 @@ export default function Hero() {
           </a>
         </div>
 
-        {/* Trust badges */}
         <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
           {trustItems.map((t, i) => (
             <div key={t.text} style={{ display: "flex", alignItems: "center", gap: i < trustItems.length - 1 ? 16 : 0 }}>
@@ -168,29 +195,28 @@ export default function Hero() {
           ))}
         </div>
       </div>
-      {/* ── END LEFT ── */}
 
       {/* ── RIGHT CARD ── */}
       <div style={{
-        background: "#fff",
-        borderRadius: 28,
-        border: "1px solid #e2e8f0",
-        padding: 28,
+        background: "#fff", borderRadius: 28,
+        border: "1px solid #e2e8f0", padding: 28,
         boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-        display: "flex",
-        flexDirection: "column",
-        gap: 20,
+        display: "flex", flexDirection: "column", gap: 20,
       }}>
 
-        {/* Promo Banner */}
+        {/* ✅ PROMO BANNER — dari API admin */}
         <div style={{ background: "#16a34a", borderRadius: 14, padding: "20px 22px", color: "#fff" }}>
-          <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", opacity: 0.75, marginBottom: 4 }}>
-            Penawaran Pertama
-          </p>
+          {promoBanner.badge && (
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", opacity: 0.75, marginBottom: 4 }}>
+              {promoBanner.badge}
+            </p>
+          )}
           <p style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 800, letterSpacing: "-0.5px", marginBottom: 2 }}>
-            Diskon 20%
+            {promoBanner.title}
           </p>
-          <p style={{ fontSize: 13, opacity: 0.82 }}>untuk pesanan pertama kamu</p>
+          {promoBanner.description && (
+            <p style={{ fontSize: 13, opacity: 0.82 }}>{promoBanner.description}</p>
+          )}
         </div>
 
         {/* Stats Grid */}
@@ -198,7 +224,7 @@ export default function Hero() {
           {[
             { value: "1.200+", label: "Pelanggan" },
             { value: "24 Jam", label: "Pengerjaan" },
-            { value: "4.9", label: "Rating" },
+            { value: "4.9",    label: "Rating" },
           ].map((s) => (
             <div key={s.label} style={{
               background: "#f8fafc", border: "1px solid #e2e8f0",
@@ -225,7 +251,6 @@ export default function Hero() {
                     background: step.done ? "#16a34a" : "#fff",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     color: step.done ? "#fff" : step.active ? "#16a34a" : "#e2e8f0",
-                    position: "relative", zIndex: 1,
                   }}>
                     {step.done ? (
                       <svg style={{ width: 10, height: 10 }} fill="currentColor" viewBox="0 0 20 20">

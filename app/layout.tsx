@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "Nyuciin Aja - Laundry Sepatu Online",
@@ -17,10 +18,11 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap"
           rel="stylesheet"
         />
-        <script
-          src="https://app.sandbox.midtrans.com/snap/snap.js"
-          data-client-key="Mid-client-n0pY9j2fnVp2GXpq"
-        />
+        <Script
+  src="https://app.sandbox.midtrans.com/snap/snap.js"
+  data-client-key="Mid-client-n0pY9j2fnVp2GXpq"
+  strategy="lazyOnload"
+/>
       </head>
       <body className="antialiased">
         {children}
