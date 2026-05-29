@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -15,9 +16,20 @@ export default function Navbar() {
       borderBottom: "1px solid #e2e8f0",
     }}>
       <div className="max-w-6xl mx-auto px-8 h-16 flex items-center justify-between">
+
         {/* Logo */}
-        <Link href="/" style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20, color: "#0f172a", letterSpacing: "-0.5px" }}>
-          Nyuciin<span style={{ color: "#16a34a" }}>Aja</span>
+        <Link href="/" className="flex items-center gap-2.5">
+          <Image
+            src="/logo.png"
+            alt="Nyuciin Aja"
+            width={48}
+            height={48}
+            className="w-12 h-12 object-contain"
+            priority
+          />
+          <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20, color: "#0f172a", letterSpacing: "-0.5px" }}>
+            Nyuciin<span style={{ color: "#16a34a" }}>Aja</span>
+          </span>
         </Link>
 
         {/* Desktop Nav */}
@@ -67,6 +79,7 @@ export default function Navbar() {
         </button>
       </div>
 
+      {/* Mobile Menu */}
       {menuOpen && (
         <div className="md:hidden bg-white border-t border-slate-100 px-6 py-4 flex flex-col gap-2">
           <a href="#services" onClick={() => setMenuOpen(false)} className="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50">Layanan</a>
