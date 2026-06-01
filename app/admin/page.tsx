@@ -5,7 +5,7 @@ import Link from "next/link";
 import { getToken, getUser } from "@/lib/auth-client";
 import {
   Package, Users, CheckCircle, Clock, TrendingUp,
-  Plus, Pencil, Trash2, Loader2, X,
+  Plus, Pencil, Trash2, Loader2, X, Star,
 } from "lucide-react";
 
 interface Stats {
@@ -28,6 +28,14 @@ interface Service {
   basePrice: number; badge?: string; featured: boolean;
   features: string[]; isActive: boolean;
 }
+interface Testimonial {
+  id: string;
+  rating: number;
+  comment: string;
+  isActive: boolean;
+  user: { name: string };
+  createdAt: string;
+}
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   BOOKED:    { label: "Diterima",    color: "bg-blue-100 text-blue-700" },
@@ -39,8 +47,8 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   CANCELLED: { label: "Dibatalkan",  color: "bg-red-100 text-red-700" },
 };
 
-const emptyPromo    = { title: "", description: "", badge: "", isActive: true, startDate: "", endDate: "" };
-const emptyService  = { name: "", description: "", basePrice: "", badge: "", featured: false, features: "", isActive: true };
+const emptyPromo   = { title: "", description: "", badge: "", isActive: true, startDate: "", endDate: "" };
+const emptyService = { name: "", description: "", basePrice: "", badge: "", featured: false, features: "", isActive: true };
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -48,6 +56,7 @@ export default function AdminDashboardPage() {
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [promos,       setPromos]       = useState<Promo[]>([]);
   const [services,     setServices]     = useState<Service[]>([]);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [loading,      setLoading]      = useState(true);
 
   // promo modal
@@ -76,16 +85,18 @@ export default function AdminDashboardPage() {
   const fetchData = async (token: string) => {
     try {
       const h = { Authorization: `Bearer ${token}` };
-      const [sRes, oRes, pRes, svRes] = await Promise.all([
-        fetch("/api/admin/stats",           { headers: h }),
-        fetch("/api/admin/orders?limit=5",  { headers: h }),
-        fetch("/api/admin/promos",          { headers: h }),
-        fetch("/api/admin/services",        { headers: h }),
+      const [sRes, oRes, pRes, svRes, tRes] = await Promise.all([
+        fetch("/api/admin/stats",                { headers: h }),
+        fetch("/api/admin/orders?limit=5",       { headers: h }),
+        fetch("/api/admin/promos",               { headers: h }),
+        fetch("/api/admin/services",             { headers: h }),
+        fetch("/api/admin/testimonials?limit=5", { headers: h }),
       ]);
       if (sRes.ok)  setStats((await sRes.json()));
       if (oRes.ok)  { const o = await oRes.json(); setRecentOrders(o.orders ?? o); }
       if (pRes.ok)  { const p = await pRes.json(); setPromos(p.promos ?? []); }
       if (svRes.ok) { const sv = await svRes.json(); setServices(sv.services ?? []); }
+      if (tRes.ok)  { const t = await tRes.json(); setTestimonials(t.testimonials ?? t); }
     } catch (err) {
       console.error(err);
     } finally {
@@ -162,6 +173,17 @@ export default function AdminDashboardPage() {
     const token = getToken();
     const res   = await fetch(`/api/admin/services/${s.id}`, { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ isActive: !s.isActive }) });
     if (res.ok) setServices(prev => prev.map(x => x.id === s.id ? { ...x, isActive: !x.isActive } : x));
+  };
+
+  // ── TESTIMONIAL helpers ──
+  const toggleTestimonial = async (t: Testimonial) => {
+    const token = getToken();
+    const res   = await fetch(`/api/admin/testimonials/${t.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ isActive: !t.isActive }),
+    });
+    if (res.ok) setTestimonials(prev => prev.map(x => x.id === t.id ? { ...x, isActive: !t.isActive } : x));
   };
 
   if (loading) return (
@@ -305,6 +327,46 @@ export default function AdminDashboardPage() {
               </Link>
             );
           })}
+        </div>
+      </div>
+
+      {/* Row 3 — Kelola Testimoni */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-5">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h2 className="font-bold text-primary-900">Kelola Testimoni</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Review ≥4 bintang yang diaktifkan tampil di landing page</p>
+          </div>
+          <Link href="/admin/testimonials" className="text-xs text-primary-600 hover:underline">
+            Kelola semua →
+          </Link>
+        </div>
+        <div className="divide-y divide-gray-50">
+          {testimonials.length === 0 ? (
+            <div className="py-12 text-center text-gray-400 text-sm">Belum ada testimoni</div>
+          ) : testimonials.map(t => (
+            <div key={t.id} className="flex items-center justify-between px-6 py-3.5">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${t.isActive ? "bg-green-400" : "bg-gray-300"}`} />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-800 truncate">{t.user?.name}</span>
+                    <span className="flex items-center gap-0.5 text-xs text-yellow-500 font-semibold">
+                      <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                      {t.rating}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{t.comment}</div>
+                </div>
+              </div>
+              <button
+                onClick={() => toggleTestimonial(t)}
+                className={`px-2 py-1 rounded-lg text-xs font-medium transition flex-shrink-0 ml-3 ${t.isActive ? "bg-gray-100 text-gray-500 hover:bg-gray-200" : "bg-green-50 text-green-600 hover:bg-green-100"}`}
+              >
+                {t.isActive ? "Nonaktifkan" : "Aktifkan"}
+              </button>
+            </div>
+          ))}
         </div>
       </div>
 
