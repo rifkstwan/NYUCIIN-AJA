@@ -4,15 +4,16 @@ import { requireAdmin } from '@/lib/middleware'
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }  // ✅ Promise
 ) {
   const { error } = requireAdmin(req)
   if (error) return error
 
+  const { id } = await params  // ✅ await params
   const { name, basePrice, description, badge, featured, features, isActive } = await req.json()
 
   const service = await prisma.shoeType.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       ...(name        !== undefined && { name }),
       ...(basePrice   !== undefined && { basePrice: Number(basePrice) }),
@@ -28,11 +29,12 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }  // ✅ Promise
 ) {
   const { error } = requireAdmin(req)
   if (error) return error
 
-  await prisma.shoeType.delete({ where: { id: params.id } })
+  const { id } = await params  // ✅ await params
+  await prisma.shoeType.delete({ where: { id } })
   return NextResponse.json({ ok: true })
 }

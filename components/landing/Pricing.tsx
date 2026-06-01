@@ -1,24 +1,43 @@
 import Link from "next/link";
 import { ArrowRight, Sparkles, Shield, Clock } from "lucide-react";
+import { prisma } from "@/lib/prisma";
 
-const perks = [
-  { icon: <Sparkles className="w-4 h-4" />, text: "Diskon 20% pesanan pertama" },
-  { icon: <Shield className="w-4 h-4" />,   text: "Garansi uang kembali" },
-  { icon: <Clock className="w-4 h-4" />,    text: "Selesai dalam 24 jam" },
-];
+// Map icon berdasarkan badge dari DB
+const iconMap: Record<string, React.ReactNode> = {
+  DISKON:   <Sparkles className="w-4 h-4" />,
+  GARANSI:  <Shield className="w-4 h-4" />,
+  CEPAT:    <Clock className="w-4 h-4" />,
+};
 
-export default function Pricing() {
+export default async function Pricing() {
+  // ✅ Fetch promo aktif dari DB
+  const promos = await prisma.promo.findMany({
+    where: {
+      isActive: true,
+      OR: [
+        { endDate: null },
+        { endDate: { gte: new Date() } },
+      ],
+    },
+    orderBy: { createdAt: "asc" },
+    take: 5,
+  });
+
+  // ✅ Hitung total user terdaftar
+  const totalUsers = await prisma.user.count();
+  const userLabel = totalUsers > 0
+    ? `${totalUsers.toLocaleString("id-ID")}+ pelanggan puas di Semarang`
+    : "1.200+ pelanggan puas di Semarang";
+
   return (
     <section style={{ maxWidth: 1200, margin: "0 auto", padding: "0 32px 88px" }}>
-      <div
-        style={{
-          background: "#0f172a",
-          borderRadius: 28,
-          padding: "64px 48px",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
+      <div style={{
+        background: "#0f172a",
+        borderRadius: 28,
+        padding: "64px 48px",
+        position: "relative",
+        overflow: "hidden",
+      }}>
         {/* Decorative blobs */}
         <div style={{
           position: "absolute", top: -60, right: -60,
@@ -59,36 +78,37 @@ export default function Pricing() {
             <span style={{ color: "#4ade80" }}>Yuk Nyuciin Aja.</span>
           </h2>
 
+          {/* ✅ Jumlah pelanggan dari DB */}
           <p style={{
             fontSize: 15.5, color: "#94a3b8",
-            marginBottom: 36, lineHeight: 1.7,
-            maxWidth: 460, margin: "0 auto 36px",
+            lineHeight: 1.7, maxWidth: 460, margin: "0 auto 36px",
           }}>
-            Bergabung dengan 1.200+ pelanggan puas di Semarang.
+            Bergabung dengan <strong style={{ color: "#e2e8f0" }}>{userLabel}</strong>.
             Daftar sekarang dan nikmati berbagai keuntungan eksklusif.
           </p>
 
-          {/* Perks */}
-          <div style={{
-            display: "flex", justifyContent: "center",
-            flexWrap: "wrap", gap: 12, marginBottom: 36,
-          }}>
-            {perks.map((p) => (
-              <div
-                key={p.text}
-                style={{
+          {/* ✅ Perks dari DB (Promo) */}
+          {promos.length > 0 && (
+            <div style={{
+              display: "flex", justifyContent: "center",
+              flexWrap: "wrap", gap: 12, marginBottom: 36,
+            }}>
+              {promos.map((p) => (
+                <div key={p.id} style={{
                   display: "flex", alignItems: "center", gap: 8,
                   background: "rgba(255,255,255,0.06)",
                   border: "1px solid rgba(255,255,255,0.1)",
                   borderRadius: 999, padding: "7px 16px",
                   fontSize: 13, color: "#e2e8f0",
-                }}
-              >
-                <span style={{ color: "#4ade80" }}>{p.icon}</span>
-                {p.text}
-              </div>
-            ))}
-          </div>
+                }}>
+                  <span style={{ color: "#4ade80" }}>
+                    {p.badge ? (iconMap[p.badge] ?? <Sparkles className="w-4 h-4" />) : <Sparkles className="w-4 h-4" />}
+                  </span>
+                  {p.title}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* CTA Buttons */}
           <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>

@@ -118,11 +118,7 @@ export default async function Hero() {
           fontSize: 12, fontWeight: 600,
           padding: "5px 14px 5px 10px", borderRadius: 999, marginBottom: 22,
         }}>
-          <span style={{
-            width: 6, height: 6, borderRadius: "50%",
-            background: "#16a34a", animation: "pulse 2s infinite",
-            flexShrink: 0, display: "inline-block",
-          }} />
+    
           Dipercaya 1.200+ pelanggan di Semarang
         </div>
 

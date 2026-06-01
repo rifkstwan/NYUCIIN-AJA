@@ -4,13 +4,17 @@ import { requireAuth } from '@/lib/middleware'
 
 const VALID_TYPES = ['BOOKED', 'PICKUP', 'WASHING', 'DRYING', 'DELIVERY', 'DONE']
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const { error, user } = requireAuth(req)
   if (error) return error
   if (user?.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  const { id } = await params
   const { photoUrl, type } = await req.json()
 
   if (!photoUrl || !VALID_TYPES.includes(type)) {
@@ -18,13 +22,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   const photo = await prisma.shoePhoto.create({
-    data: { orderId: params.id, photoUrl, type },
+    data: { orderId: id, photoUrl, type },
   })
 
   return NextResponse.json(photo, { status: 201 })
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const { error, user } = requireAuth(req)
   if (error) return error
   if (user?.role !== 'ADMIN') {
