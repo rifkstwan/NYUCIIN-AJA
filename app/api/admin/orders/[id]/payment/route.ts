@@ -2,23 +2,27 @@ import { verifyToken } from "@/lib/auth"
 import { cookies } from "next/headers"
 import { prisma } from "@/lib/prisma"
 import midtransClient from "midtrans-client"
-import { NextResponse } from "next/server"
-import { NextRequest } from "next/server"
+import { NextResponse, NextRequest } from "next/server"
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const cookieStore = await cookies()
-const token = cookieStore.get("token")?.value
-if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-const user = verifyToken(token)
-if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const token = cookieStore.get("token")?.value
+  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const user = verifyToken(token)
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   try {
     const { id } = await params
+
+    // Ambil email dari DB karena token tidak menyimpan email
+    const dbUser = await prisma.user.findUnique({ where: { id: user.id } })
+
     const order = await prisma.order.findFirst({
-      where: { id, userId: session.user.id },
+      where: { id, userId: user.id },  // ✅ ganti session.user.id → user.id
       include: { shoeType: true },
     })
     if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 })
@@ -30,7 +34,7 @@ if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const transaction = await snap.createTransaction({
       transaction_details: { order_id: order.id, gross_amount: order.totalPrice },
-      customer_details: { email: session.user.email },
+      customer_details: { email: dbUser?.email ?? "" },  // ✅ ganti session.user.email → dbUser.email
     })
 
     await prisma.payment.upsert({
