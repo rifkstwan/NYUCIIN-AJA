@@ -1,13 +1,16 @@
 // app/api/orders/[id]/payment/route.ts
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { verifyToken } from "@/lib/auth"
+import { cookies } from "next/headers"
 import { prisma } from "@/lib/prisma";
 import midtransClient from "midtrans-client";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const cookieStore = await cookies()
+const token = cookieStore.get("token")?.value
+if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+const user = verifyToken(token)
+if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const order = await prisma.order.findFirst({
     where: { id: params.id, userId: session.user.id },

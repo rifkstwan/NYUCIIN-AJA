@@ -4,13 +4,15 @@ import { requireAdmin } from '@/lib/middleware'
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { error } = requireAdmin(req)
   if (error) return error
 
+  const { id } = await params
+
   const notification = await prisma.notification.update({
-    where: { id: params.id },
+    where: { id },
     data:  { isRead: true },
   })
   return NextResponse.json(notification)
