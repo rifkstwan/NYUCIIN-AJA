@@ -9,11 +9,8 @@ import {
 } from "lucide-react";
 
 interface Stats {
-  totalOrders: number;
-  activeOrders: number;
-  completedOrders: number;
-  totalUsers: number;
-  totalRevenue: number;
+  totalOrders: number; activeOrders: number;
+  completedOrders: number; totalUsers: number; totalRevenue: number;
 }
 interface RecentOrder {
   id: string; orderNumber: string; status: string;
@@ -29,12 +26,8 @@ interface Service {
   features: string[]; isActive: boolean;
 }
 interface Testimonial {
-  id: string;
-  rating: number;
-  comment: string;
-  isVisible: boolean; // ✅ FIX: field DB yang benar (bukan isActive)
-  user: { name: string };
-  createdAt: string;
+  id: string; rating: number; comment: string;
+  isVisible: boolean; user: { name: string }; createdAt: string;
 }
 
 const statusConfig: Record<string, { label: string; color: string }> = {
@@ -75,6 +68,9 @@ export default function AdminDashboardPage() {
   const [serviceDeletingId, setServiceDeletingId] = useState<string | null>(null);
   const [serviceMsg,        setServiceMsg]        = useState("");
 
+  // ✅ TAMBAHAN: state untuk delete testimoni
+  const [testDeletingId, setTestDeletingId] = useState<string | null>(null);
+
   useEffect(() => {
     const token = getToken();
     const user  = getUser();
@@ -92,13 +88,12 @@ export default function AdminDashboardPage() {
         fetch("/api/admin/services",             { headers: h }),
         fetch("/api/admin/testimonials?limit=5", { headers: h }),
       ]);
-      if (sRes.ok)  setStats((await sRes.json()));
+      if (sRes.ok)  setStats(await sRes.json());
       if (oRes.ok)  { const o = await oRes.json(); setRecentOrders(o.orders ?? o); }
       if (pRes.ok)  { const p = await pRes.json(); setPromos(p.promos ?? []); }
       if (svRes.ok) { const sv = await svRes.json(); setServices(sv.services ?? []); }
       if (tRes.ok)  {
         const t = await tRes.json();
-        // ✅ FIX: API returns { data: [...], pagination: {...} } — ambil t.data
         const arr = Array.isArray(t) ? t : (t.data ?? t.testimonials ?? []);
         setTestimonials(arr);
       }
@@ -180,16 +175,23 @@ export default function AdminDashboardPage() {
     if (res.ok) setServices(prev => prev.map(x => x.id === s.id ? { ...x, isActive: !x.isActive } : x));
   };
 
-  // ── TESTIMONIAL helpers ──
+  // ✅ TAMBAHAN: TESTIMONI helpers
   const toggleTestimonial = async (t: Testimonial) => {
     const token = getToken();
-    // ✅ FIX: PATCH ke route utama dengan body { id, isVisible }
-    const res = await fetch(`/api/admin/testimonials`, {
+    const res   = await fetch(`/api/admin/testimonials/${t.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ id: t.id, isVisible: !t.isVisible }),
+      body: JSON.stringify({ isVisible: !t.isVisible }),
     });
-    if (res.ok) setTestimonials(prev => prev.map(x => x.id === t.id ? { ...x, isVisible: !t.isVisible } : x));
+    if (res.ok) setTestimonials(prev => prev.map(x => x.id === t.id ? { ...x, isVisible: !x.isVisible } : x));
+  };
+  const handleDeleteTest = async (id: string) => {
+    if (!confirm("Hapus testimoni ini?")) return;
+    setTestDeletingId(id);
+    const token = getToken();
+    await fetch(`/api/admin/testimonials/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    setTestimonials(prev => prev.filter(x => x.id !== id));
+    setTestDeletingId(null);
   };
 
   if (loading) return (
@@ -353,7 +355,6 @@ export default function AdminDashboardPage() {
           ) : testimonials.map(t => (
             <div key={t.id} className="flex items-center justify-between px-6 py-3.5">
               <div className="flex items-center gap-3 min-w-0">
-                {/* ✅ FIX: pakai t.isVisible */}
                 <div className={`w-2 h-2 rounded-full flex-shrink-0 ${t.isVisible ? "bg-green-400" : "bg-gray-300"}`} />
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -366,13 +367,22 @@ export default function AdminDashboardPage() {
                   <div className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{t.comment}</div>
                 </div>
               </div>
-              <button
-                onClick={() => toggleTestimonial(t)}
-                className={`px-2 py-1 rounded-lg text-xs font-medium transition flex-shrink-0 ml-3 ${t.isVisible ? "bg-gray-100 text-gray-500 hover:bg-gray-200" : "bg-green-50 text-green-600 hover:bg-green-100"}`}
-              >
-                {/* ✅ FIX: pakai t.isVisible */}
-                {t.isVisible ? "Nonaktifkan" : "Aktifkan"}
-              </button>
+              {/* ✅ FIX: toggle + delete */}
+              <div className="flex items-center gap-1 flex-shrink-0 ml-3">
+                <button
+                  onClick={() => toggleTestimonial(t)}
+                  className={`px-2 py-1 rounded-lg text-xs font-medium transition ${t.isVisible ? "bg-gray-100 text-gray-500 hover:bg-gray-200" : "bg-green-50 text-green-600 hover:bg-green-100"}`}
+                >
+                  {t.isVisible ? "Nonaktifkan" : "Aktifkan"}
+                </button>
+                <button
+                  onClick={() => handleDeleteTest(t.id)}
+                  disabled={testDeletingId === t.id}
+                  className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition disabled:opacity-50"
+                >
+                  {testDeletingId === t.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                </button>
+              </div>
             </div>
           ))}
         </div>

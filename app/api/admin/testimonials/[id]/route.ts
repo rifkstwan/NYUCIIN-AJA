@@ -1,51 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAuth } from '@/lib/middleware'
+import { requireAdmin } from '@/lib/middleware'
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error, user } = requireAuth(req)
+  const { error } = requireAdmin(req)
   if (error) return error
-  if (user?.role !== 'ADMIN') {
-    return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
-  }
 
   try {
-    const { id } = params
+    const { id } = await params
     const { isVisible } = await req.json()
-
-    const updated = await prisma.review.update({
+    const review = await prisma.review.update({
       where: { id },
-      data: { isVisible },
+      data:  { isVisible },
     })
-
-    return NextResponse.json(updated)
+    return NextResponse.json(review)
   } catch (err) {
-    console.error(err)
-    return NextResponse.json({ message: 'Internal server error' }, { status: 500 })
+    console.error('PATCH review error:', err)
+    return NextResponse.json({ error: String(err) }, { status: 500 })
   }
 }
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { error, user } = requireAuth(req)
+  const { error } = requireAdmin(req)
   if (error) return error
-  if (user?.role !== 'ADMIN') {
-    return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
-  }
 
   try {
-    const { id } = params
-
+    const { id } = await params
     await prisma.review.delete({ where: { id } })
-
-    return NextResponse.json({ message: 'Deleted' })
+    return NextResponse.json({ ok: true })
   } catch (err) {
-    console.error(err)
-    return NextResponse.json({ message: 'Internal server error' }, { status: 500 })
+    console.error('DELETE review error:', err)
+    return NextResponse.json({ error: String(err) }, { status: 500 })
   }
 }
