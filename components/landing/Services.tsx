@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Zap, Brush, Sparkles } from "lucide-react";
 
 interface Service {
   id: string;
@@ -57,6 +57,13 @@ const fallbackServices: Service[] = [
   },
 ];
 
+// ✅ Ikon berbeda per layanan
+const serviceIconMap: Record<string, React.ReactNode> = {
+  "Fast Cleaning":  <Zap      className="w-5 h-5" style={{ color: "#16a34a" }} />,
+  "Deep Cleaning":  <Brush    className="w-5 h-5" style={{ color: "#16a34a" }} />,
+  "Unyellowing":    <Sparkles className="w-5 h-5" style={{ color: "#16a34a" }} />,
+};
+
 export default async function Services() {
   const services = await getServices();
   const list = services.length > 0 ? services : fallbackServices;
@@ -90,13 +97,13 @@ export default async function Services() {
                 <span className="absolute -top-3 left-5 text-[10.5px] font-bold px-3 py-1 rounded-full text-white"
                   style={{ background: "#ea580c" }}>{s.badge}</span>
               )}
+
+              {/* ✅ Ikon dinamis per layanan */}
               <div className="w-11 h-11 rounded-[10px] flex items-center justify-center mb-4"
                 style={{ background: "#dcfce7" }}>
-                <svg className="w-5 h-5" style={{ color: "#16a34a" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                    d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                </svg>
+                {serviceIconMap[s.name] ?? <Sparkles className="w-5 h-5" style={{ color: "#16a34a" }} />}
               </div>
+
               <h3 className="font-display font-bold text-[#0f172a] mb-2" style={{ fontSize: "17px" }}>
                 {s.name}
               </h3>
