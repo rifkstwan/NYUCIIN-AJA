@@ -13,16 +13,15 @@ export async function POST(
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const user = verifyToken(token)
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (!user || user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
   try {
     const { id } = await params
 
-    // Ambil email dari DB karena token tidak menyimpan email
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } })
 
     const order = await prisma.order.findFirst({
-      where: { id, userId: user.id },  // ✅ ganti session.user.id → user.id
+      where: { id },
       include: { shoeType: true },
     })
     if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 })
@@ -30,12 +29,13 @@ export async function POST(
     const snap = new midtransClient.Snap({
       isProduction: false,
       serverKey: process.env.MIDTRANS_SERVER_KEY!,
+      clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY!,
     })
 
     const transaction = await snap.createTransaction({
       transaction_details: { order_id: order.id, gross_amount: order.totalPrice },
-      customer_details: { email: dbUser?.email ?? "" },  // ✅ ganti session.user.email → dbUser.email
-    })
+      customer_details: { email: dbUser?.email ?? "" },
+    } as any)
 
     await prisma.payment.upsert({
       where: { orderId: order.id },
@@ -45,7 +45,7 @@ export async function POST(
 
     return NextResponse.json({ token: transaction.token })
   } catch (err) {
-    console.error('POST payment error:', err)
+    console.error("POST admin payment error:", err)
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }
 }
