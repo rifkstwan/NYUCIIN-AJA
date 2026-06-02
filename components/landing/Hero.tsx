@@ -154,7 +154,7 @@ export default async function Hero() {
             Mulai Sekarang
           </Link>
           <a
-            href="#layanan"
+           href="#how-it-works"
             style={{
               padding: "13px 24px", borderRadius: 10, fontSize: 14.5, fontWeight: 600,
               background: "#fff", color: "#0f172a",
