@@ -32,7 +32,7 @@ interface Testimonial {
   id: string;
   rating: number;
   comment: string;
-  isActive: boolean;
+  isVisible: boolean; // ✅ FIX: field DB yang benar (bukan isActive)
   user: { name: string };
   createdAt: string;
 }
@@ -96,7 +96,12 @@ export default function AdminDashboardPage() {
       if (oRes.ok)  { const o = await oRes.json(); setRecentOrders(o.orders ?? o); }
       if (pRes.ok)  { const p = await pRes.json(); setPromos(p.promos ?? []); }
       if (svRes.ok) { const sv = await svRes.json(); setServices(sv.services ?? []); }
-      if (tRes.ok)  { const t = await tRes.json(); setTestimonials(t.testimonials ?? t); }
+      if (tRes.ok)  {
+        const t = await tRes.json();
+        // ✅ FIX: API returns { data: [...], pagination: {...} } — ambil t.data
+        const arr = Array.isArray(t) ? t : (t.data ?? t.testimonials ?? []);
+        setTestimonials(arr);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -178,12 +183,13 @@ export default function AdminDashboardPage() {
   // ── TESTIMONIAL helpers ──
   const toggleTestimonial = async (t: Testimonial) => {
     const token = getToken();
-    const res   = await fetch(`/api/admin/testimonials/${t.id}`, {
+    // ✅ FIX: PATCH ke route utama dengan body { id, isVisible }
+    const res = await fetch(`/api/admin/testimonials`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ isActive: !t.isActive }),
+      body: JSON.stringify({ id: t.id, isVisible: !t.isVisible }),
     });
-    if (res.ok) setTestimonials(prev => prev.map(x => x.id === t.id ? { ...x, isActive: !t.isActive } : x));
+    if (res.ok) setTestimonials(prev => prev.map(x => x.id === t.id ? { ...x, isVisible: !t.isVisible } : x));
   };
 
   if (loading) return (
@@ -335,10 +341,10 @@ export default function AdminDashboardPage() {
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <div>
             <h2 className="font-bold text-primary-900">Kelola Testimoni</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Review ≥4 bintang yang diaktifkan tampil di landing page</p>
+            <p className="text-xs text-gray-400 mt-0.5">Review yang diaktifkan tampil di landing page</p>
           </div>
           <Link href="/admin/testimonials" className="text-xs text-primary-600 hover:underline">
-            Kelola semua →
+            Kelola semua
           </Link>
         </div>
         <div className="divide-y divide-gray-50">
@@ -347,7 +353,8 @@ export default function AdminDashboardPage() {
           ) : testimonials.map(t => (
             <div key={t.id} className="flex items-center justify-between px-6 py-3.5">
               <div className="flex items-center gap-3 min-w-0">
-                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${t.isActive ? "bg-green-400" : "bg-gray-300"}`} />
+                {/* ✅ FIX: pakai t.isVisible */}
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${t.isVisible ? "bg-green-400" : "bg-gray-300"}`} />
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-gray-800 truncate">{t.user?.name}</span>
@@ -361,9 +368,10 @@ export default function AdminDashboardPage() {
               </div>
               <button
                 onClick={() => toggleTestimonial(t)}
-                className={`px-2 py-1 rounded-lg text-xs font-medium transition flex-shrink-0 ml-3 ${t.isActive ? "bg-gray-100 text-gray-500 hover:bg-gray-200" : "bg-green-50 text-green-600 hover:bg-green-100"}`}
+                className={`px-2 py-1 rounded-lg text-xs font-medium transition flex-shrink-0 ml-3 ${t.isVisible ? "bg-gray-100 text-gray-500 hover:bg-gray-200" : "bg-green-50 text-green-600 hover:bg-green-100"}`}
               >
-                {t.isActive ? "Nonaktifkan" : "Aktifkan"}
+                {/* ✅ FIX: pakai t.isVisible */}
+                {t.isVisible ? "Nonaktifkan" : "Aktifkan"}
               </button>
             </div>
           ))}
