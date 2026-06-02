@@ -68,14 +68,17 @@ export default function AdminDashboardPage() {
     const user  = getUser();
     if (!token || user?.role !== "ADMIN") { router.push("/auth/login"); return; }
     fetchData(token);
-    // poll notifikasi tiap 30 detik
     const interval = setInterval(() => fetchNotifs(token), 30000);
     return () => clearInterval(interval);
   }, []);
 
   const fetchNotifs = useCallback(async (token: string) => {
     const res = await fetch("/api/admin/notifications", { headers: { Authorization: `Bearer ${token}` } });
-    if (res.ok) { const d = await res.json(); setNotifs(d.notifications); setUnread(d.unreadCount); }
+    if (res.ok) {
+      const d = await res.json();
+      setNotifs(d.notifications ?? []);  // ✅ FIX
+      setUnread(d.unreadCount ?? 0);     // ✅ FIX
+    }
   }, []);
 
   const fetchData = async (token: string) => {
@@ -93,8 +96,12 @@ export default function AdminDashboardPage() {
       if (oRes.ok)  { const o = await oRes.json(); setRecentOrders(o.orders ?? o); }
       if (pRes.ok)  { const p = await pRes.json(); setPromos(p.promos ?? []); }
       if (svRes.ok) { const sv = await svRes.json(); setServices(sv.services ?? []); }
-      if (tRes.ok)  { const t = await tRes.json(); setTestimonials(t.reviews ?? []); }
-      if (nRes.ok)  { const n = await nRes.json(); setNotifs(n.notifications); setUnread(n.unreadCount); }
+      if (tRes.ok) { const t = await tRes.json(); setTestimonials(t.data ?? []); }
+      if (nRes.ok)  {
+        const n = await nRes.json();
+        setNotifs(n.notifications ?? []);  // ✅ FIX
+        setUnread(n.unreadCount ?? 0);     // ✅ FIX
+      }
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
@@ -116,11 +123,11 @@ export default function AdminDashboardPage() {
     const token = getToken();
     const res   = await fetch(`/api/admin/export?type=${type}`, { headers: { Authorization: `Bearer ${token}` } });
     if (res.ok) {
-      const blob     = await res.blob();
-      const url      = URL.createObjectURL(blob);
-      const a        = document.createElement('a');
-      a.href         = url;
-      a.download     = `${type}-${new Date().toISOString().slice(0,10)}.csv`;
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `${type}-${new Date().toISOString().slice(0,10)}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -245,9 +252,9 @@ export default function AdminDashboardPage() {
           {/* Notifikasi */}
           <div className="relative">
             <button onClick={openNotifs} className="relative p-2 rounded-xl border border-gray-200 hover:bg-gray-50 transition text-gray-600">
-              <Bell className="w-4.5 h-4.5 w-5 h-5" />
+              <Bell className="w-5 h-5" />
               {unread > 0 && (
-                <span className="absolute -top-1 -right-1 w-4.5 h-4.5 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
                   {unread > 9 ? '9+' : unread}
                 </span>
               )}
