@@ -100,7 +100,6 @@ const trustItems = [
 export default async function Hero() {
   const promo = await getFirstPromo();
 
-  // Fallback kalau API belum ada promo
   const promoBanner = promo ?? {
     title: "Diskon 20%",
     description: "untuk pesanan pertama kamu",
@@ -118,7 +117,6 @@ export default async function Hero() {
           fontSize: 12, fontWeight: 600,
           padding: "5px 14px 5px 10px", borderRadius: 999, marginBottom: 22,
         }}>
-    
           Dipercaya 1.200+ pelanggan di Semarang
         </div>
 
@@ -154,7 +152,7 @@ export default async function Hero() {
             Mulai Sekarang
           </Link>
           <a
-           href="#how-it-works"
+            href="#how-it-works"
             style={{
               padding: "13px 24px", borderRadius: 10, fontSize: 14.5, fontWeight: 600,
               background: "#fff", color: "#0f172a",
@@ -167,26 +165,19 @@ export default async function Hero() {
           </a>
         </div>
 
-        <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-          {trustItems.map((t, i) => (
-            <div key={t.text} style={{ display: "flex", alignItems: "center", gap: i < trustItems.length - 1 ? 16 : 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "#475569" }}>
-                <div style={{
-                  width: 24, height: 24, borderRadius: 6,
-                  background: "#dcfce7",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  flexShrink: 0, color: "#16a34a",
-                }}>
-                  {t.icon}
-                </div>
-                {t.text}
+        {/* Trust items — tanpa titik pemisah */}
+        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          {trustItems.map((t) => (
+            <div key={t.text} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: "#475569" }}>
+              <div style={{
+                width: 24, height: 24, borderRadius: 6,
+                background: "#dcfce7",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0, color: "#16a34a",
+              }}>
+                {t.icon}
               </div>
-              {i < trustItems.length - 1 && (
-                <span style={{
-                  width: 4, height: 4, borderRadius: "50%",
-                  background: "#cbd5e1", flexShrink: 0, marginLeft: 16,
-                }} />
-              )}
+              {t.text}
             </div>
           ))}
         </div>
@@ -200,7 +191,7 @@ export default async function Hero() {
         display: "flex", flexDirection: "column", gap: 20,
       }}>
 
-        {/* ✅ PROMO BANNER — dari API admin */}
+        {/* PROMO BANNER */}
         <div style={{ background: "#16a34a", borderRadius: 14, padding: "20px 22px", color: "#fff" }}>
           {promoBanner.badge && (
             <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", opacity: 0.75, marginBottom: 4 }}>
