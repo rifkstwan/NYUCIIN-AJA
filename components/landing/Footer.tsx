@@ -39,7 +39,7 @@ export default function Footer() {
                 className="flex items-center gap-2 font-semibold px-7 py-3.5 rounded-[10px] transition hover:-translate-y-0.5 hover:bg-[#f1f5f9]"
                 style={{ background: "#fff", color: "#0f172a", fontSize: "14.5px" }}
               >
-                Daftar Gratis <ArrowRight className="w-4 h-4" />
+                Daftar Gratis 
               </Link>
               <Link
                 href="/auth/login"
