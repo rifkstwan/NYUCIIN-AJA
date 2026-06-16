@@ -43,13 +43,21 @@ export default function RiwayatPage() {
   const [loading, setLoading]   = useState(true);
   const [notaOpen, setNotaOpen] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchOrders = () => {
     fetch("/api/orders", {
       headers: { Authorization: `Bearer ${getToken()}` },
     })
       .then(r => r.json())
       .then(data => setOrders(data.orders ?? data))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchOrders();
+
+    // Auto-refresh setiap 10 detik agar status pembayaran selalu terkini
+    const interval = setInterval(fetchOrders, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const selectedOrder = orders.find(o => o.id === notaOpen);

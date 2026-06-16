@@ -13,6 +13,14 @@ interface JWTPayload {
 // Untuk API Routes (pakai NextRequest)
 export async function getUserFromRequest(req: NextRequest): Promise<JWTPayload | null> {
   try {
+    // Coba Authorization Bearer header dulu (dipakai frontend via getToken())
+    const authHeader = req.headers.get('authorization') ?? ''
+    if (authHeader.startsWith('Bearer ')) {
+      const token = authHeader.slice(7)
+      const payload = jwt.verify(token, process.env.JWT_SECRET!) as JWTPayload
+      return payload
+    }
+    // Fallback: cookie
     const token = req.cookies.get('auth_token')?.value
     if (!token) return null
 

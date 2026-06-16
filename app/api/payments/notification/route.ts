@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true })
   }
 
-  const { order_id, status_code, gross_amount, signature_key, transaction_status, fraud_status } = body
+  const { order_id, status_code, gross_amount, signature_key, transaction_status, fraud_status, transaction_id } = body
 
   // Verifikasi signature Midtrans
   const serverKey = process.env.MIDTRANS_SERVER_KEY!
@@ -29,13 +29,22 @@ export async function POST(req: NextRequest) {
   else if (transaction_status === 'settlement') paymentStatus = 'PAID'
   else if (['cancel', 'deny', 'expire'].includes(transaction_status)) paymentStatus = 'FAILED'
 
-  // Cari payment by transactionId (bukan orderId!)
-  const payment = await prisma.payment.findFirst({
+  // Cari payment: coba transactionId dulu, lalu fallback ke orderId
+  // (transactionId disimpan = order.id saat create, dan Midtrans mengirim order_id = order.id)
+  let payment = await prisma.payment.findFirst({
     where: { transactionId: order_id },
     include: { order: true },
   })
 
   if (!payment) {
+    payment = await prisma.payment.findFirst({
+      where: { orderId: order_id },
+      include: { order: true },
+    })
+  }
+
+  if (!payment) {
+    console.error('Payment tidak ditemukan untuk order_id:', order_id)
     return NextResponse.json({ error: 'Payment tidak ditemukan' }, { status: 404 })
   }
 
@@ -44,6 +53,7 @@ export async function POST(req: NextRequest) {
     where: { id: payment.id },
     data: {
       status: paymentStatus,
+      transactionId: transaction_id ?? order_id,
       paymentMethod: body.payment_type,
       paidAt: paymentStatus === 'PAID' ? new Date() : null,
       midtransResponse: body,

@@ -60,27 +60,48 @@ export default function OrderDetailPage() {
     fetchOrder(token);
     fetchPhotos(token);
 
-    if (searchParams.get("paid") === "1") {
-      let attempts = 0;
-      const interval = setInterval(async () => {
-        attempts++;
-        try {
-          const res  = await fetch(`/api/orders/${id}`, {
+    // Polling setiap 5 detik: verifikasi status payment ke Midtrans
+    // (fallback jika webhook terlambat/gagal)
+    const interval = setInterval(async () => {
+      try {
+        // 1. Refresh data order dari DB
+        const res  = await fetch(`/api/orders/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        const o    = data.order ?? data;
+
+        // 2. Jika masih PENDING → aktif cek ke Midtrans langsung
+        if (o?.payment?.status === "PENDING") {
+          const vRes  = await fetch(`/api/orders/${id}/payment/verify`, {
+            method: "POST",
             headers: { Authorization: `Bearer ${token}` },
           });
-          const data = await res.json();
-          const o    = data.order ?? data;
-          if (o?.payment?.status === "PAID" || attempts >= 10) {
-            setOrder(o);
-            clearInterval(interval);
-            router.replace(`/dashboard/orders/${id}`);
+          if (vRes.ok) {
+            const vData = await vRes.json();
+            // Refresh order lagi setelah verify
+            if (vData.status === "PAID") {
+              const r2   = await fetch(`/api/orders/${id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              const d2 = await r2.json();
+              setOrder(d2.order ?? d2);
+              if (searchParams.get("paid") === "1") {
+                router.replace(`/dashboard/orders/${id}`);
+              }
+              return;
+            }
           }
-        } catch {
-          clearInterval(interval);
         }
-      }, 2000);
-      return () => clearInterval(interval);
-    }
+
+        setOrder(o);
+        if (o?.payment?.status === "PAID" && searchParams.get("paid") === "1") {
+          router.replace(`/dashboard/orders/${id}`);
+        }
+      } catch {}
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // ── Print nota saja (tanpa URL/timestamp browser) ──
@@ -453,8 +474,29 @@ export default function OrderDetailPage() {
           )}
 
           {order.payment?.status === "PENDING" && (
-            <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 16, padding: "16px 20px", fontSize: 13, color: "#92400e" }}>
-              Menunggu pembayaran...
+            <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", borderRadius: 16, padding: "20px", fontSize: 13, color: "#92400e" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                <div style={{
+                  width: 16, height: 16, border: "2px solid #f59e0b",
+                  borderTopColor: "transparent", borderRadius: "50%",
+                  animation: "spin 0.7s linear infinite", flexShrink: 0,
+                }} />
+                <span style={{ fontWeight: 600 }}>Menunggu pembayaran...</span>
+              </div>
+              <p style={{ fontSize: 12, color: "#a16207", marginBottom: 14, lineHeight: 1.5 }}>
+                Selesaikan pembayaran untuk melanjutkan proses laundry kamu.
+              </p>
+              <button
+                onClick={() => router.push(`/dashboard/orders/${id}/payment`)}
+                style={{
+                  width: "100%", background: "#16a34a", color: "#fff",
+                  border: "none", borderRadius: 10, padding: "11px 0",
+                  fontSize: 13, fontWeight: 700, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                }}
+              >
+                Bayar Sekarang
+              </button>
             </div>
           )}
 

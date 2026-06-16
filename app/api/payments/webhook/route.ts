@@ -28,11 +28,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Invalid signature' }, { status: 403 })
     }
 
-    // Cari payment via transactionId (format: ORD-xxx-timestamp)
-    const payment = await prisma.payment.findFirst({
+    // Midtrans mengirim order_id = order.id kita (disimpan sebagai transactionId)
+    // Cari dengan double fallback: transactionId → orderId
+    let payment = await prisma.payment.findFirst({
       where: { transactionId: order_id },
       include: { order: true },
     })
+
+    if (!payment) {
+      payment = await prisma.payment.findFirst({
+        where: { orderId: order_id },
+        include: { order: true },
+      })
+    }
 
     if (!payment) {
       return NextResponse.json({ message: 'Payment not found' }, { status: 404 })
@@ -60,6 +68,7 @@ export async function POST(req: NextRequest) {
       where: { id: payment.id },
       data: {
         status: paymentStatus,
+        transactionId: transaction_id ?? null,
         paymentMethod: payment_type,
         paidAt: paymentStatus === 'PAID' ? new Date() : null,
         midtransResponse: body,

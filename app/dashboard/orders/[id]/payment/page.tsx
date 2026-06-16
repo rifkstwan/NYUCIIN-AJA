@@ -46,9 +46,26 @@ export default function PaymentPage() {
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Gagal') }
       const { snapToken } = await res.json()
+
+      // Helper: langsung sinkronisasi status ke DB via Midtrans API (tanpa tunggu webhook)
+      const syncPayment = async () => {
+        try {
+          await fetch(`/api/orders/${id}/payment/verify`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+          })
+        } catch {}
+      }
+
       window.snap.pay(snapToken, {
-        onSuccess: () => router.push(`/dashboard/orders/${id}?paid=1`),
-        onPending: () => router.push(`/dashboard/orders/${id}?status=pending`),
+        onSuccess: async () => {
+          await syncPayment()
+          router.push(`/dashboard/orders/${id}?paid=1`)
+        },
+        onPending: async () => {
+          await syncPayment()
+          router.push(`/dashboard/orders/${id}?status=pending`)
+        },
         onError: () => { setError('Pembayaran gagal. Silakan coba lagi.'); setLoading(false) },
         onClose: () => setLoading(false),
       })
@@ -57,6 +74,7 @@ export default function PaymentPage() {
       setLoading(false)
     }
   }
+
 
   if (error && !order) return (
     <div style={{ maxWidth: 480, margin: '60px auto', padding: 24, textAlign: 'center' }}>
